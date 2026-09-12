@@ -14,5 +14,8 @@ import { env } from '../env.js';
 export class RatingServiceClientService {
   readonly client: RatingServiceClient = createRatingServiceClient(
     env.RATING_SERVICE_URL,
+    {
+      Origin: env.SELF_ORIGIN,
+    },
   );
 }

@@ -3,6 +3,7 @@
 import {
   createRatingServiceClient,
   type ApiError,
+  type BindStatusResponse,
   type JsonPatchOp,
   type QuoteSchemaResponse,
 } from 'api-client';
@@ -197,5 +198,36 @@ export function useQuoteSession({
     return { success: true };
   }, []);
 
-  return { ...session, startQuote, setFieldValue, submitPage, pullReport };
+  const requestBind = useCallback(async (): Promise<SubmitPageResult> => {
+    const { quoteId } = useQuoteSessionStore.getState();
+    if (!quoteId) return { success: false };
+
+    const result = await clientRef.current.requestBind(quoteId);
+    if (!result.success) return { success: false, error: result.error };
+
+    session.patch({ funnelStage: 'bind' });
+    saveToSessionStorage(
+      quoteId,
+      selectSessionData(useQuoteSessionStore.getState()),
+    );
+    return { success: true };
+  }, []);
+
+  const getBindStatus =
+    useCallback(async (): Promise<BindStatusResponse | null> => {
+      const { quoteId } = useQuoteSessionStore.getState();
+      if (!quoteId) return null;
+      const result = await clientRef.current.getBindStatus(quoteId);
+      return result.success ? result.data : null;
+    }, []);
+
+  return {
+    ...session,
+    startQuote,
+    setFieldValue,
+    submitPage,
+    pullReport,
+    requestBind,
+    getBindStatus,
+  };
 }

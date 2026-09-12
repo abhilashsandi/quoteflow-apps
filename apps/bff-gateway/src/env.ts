@@ -8,6 +8,10 @@ const envSchema = z.object({
     })
     .min(1, 'RATING_SERVICE_URL must not be empty'),
   PORT: z.coerce.number().int().positive().default(4100),
+  /** Sent as the Origin header on every call to quoteflow-rating-service — see
+   * RatingServiceClientService for why (Node's fetch never sends one, and Repo 1's CORS
+   * policy on /quotes deliberately requires one). Must be in Repo 1's own CORS_ORIGINS. */
+  SELF_ORIGIN: z.string().default('http://localhost:4100'),
   CORS_ORIGINS: z
     .string()
     .default('http://localhost:3000,http://localhost:3001')

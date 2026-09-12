@@ -201,6 +201,66 @@ describe('useQuoteSession', () => {
     expect(outcome.error?.code).toBe('field_validator_failed');
   });
 
+  it('requestBind proxies to bind and advances the local funnelStage to bind', async () => {
+    useQuoteSessionStore.getState().hydrate({
+      quoteId: 'q1',
+      carrier: { code: 'acme', name: 'Acme' },
+      funnelStage: 'rc2',
+      currentPageKey: 'driver-info',
+      schema: { pages: [] },
+      bundle: { manifestUrl: '/bundles/manifest.json', configKey: 'acme' },
+      answers: {},
+      rate: null,
+      status: 'ready',
+      error: null,
+    });
+    mockFetchSequence({
+      status: 202,
+      body: { jobId: 'j1', quoteId: 'q1', status: 'pending', attemptCount: 0 },
+    });
+
+    const { result } = renderHook(() =>
+      useQuoteSession({ bffGatewayBaseUrl: BASE_URL }),
+    );
+    const outcome = await act(() => result.current.requestBind());
+
+    expect(outcome).toEqual({ success: true });
+    expect(result.current.funnelStage).toBe('bind');
+  });
+
+  it('getBindStatus returns the upstream status without touching the store', async () => {
+    useQuoteSessionStore.getState().hydrate({
+      quoteId: 'q1',
+      carrier: { code: 'acme', name: 'Acme' },
+      funnelStage: 'bind',
+      currentPageKey: 'driver-info',
+      schema: { pages: [] },
+      bundle: { manifestUrl: '/bundles/manifest.json', configKey: 'acme' },
+      answers: {},
+      rate: null,
+      status: 'ready',
+      error: null,
+    });
+    mockFetchSequence({
+      status: 200,
+      body: {
+        jobId: 'j1',
+        quoteId: 'q1',
+        status: 'running',
+        attemptCount: 1,
+        lastError: null,
+        updatedAt: 'now',
+      },
+    });
+
+    const { result } = renderHook(() =>
+      useQuoteSession({ bffGatewayBaseUrl: BASE_URL }),
+    );
+    const status = await act(() => result.current.getBindStatus());
+
+    expect(status?.status).toBe('running');
+  });
+
   it('resume: hydrates from sessionStorage without any network call when a cached session exists', async () => {
     window.sessionStorage.setItem(
       'quoteflow:quote:q1',

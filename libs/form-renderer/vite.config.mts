@@ -39,6 +39,12 @@ export default defineConfig(() => ({
     rolldownOptions: {
       // External packages that should not be bundled into your library.
       external: ['react', 'react-dom', 'react/jsx-runtime'],
+      output: {
+        // ConfigDrivenPage and useValidatorRunner are hook-based and only ever meant to run
+        // client-side — see ui-components' vite.config.mts for why this has to be a banner
+        // rather than a source-level directive.
+        banner: "'use client';",
+      },
     },
   },
 }));

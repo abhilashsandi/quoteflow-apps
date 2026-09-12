@@ -41,6 +41,14 @@ export default defineConfig(() => ({
     rolldownOptions: {
       // External packages that should not be bundled into your library.
       external: ['react', 'react-dom', 'react/jsx-runtime'],
+      output: {
+        // Every component here is interactive (Radix primitives, event handlers) — rather
+        // than annotate each one, mark the whole bundle client-only once. Rolldown drops a
+        // literal 'use client' directive from source when concatenating modules, so this has
+        // to be injected as a banner to survive into the built output, which is what Next.js's
+        // RSC boundary actually inspects.
+        banner: "'use client';",
+      },
     },
   },
 }));

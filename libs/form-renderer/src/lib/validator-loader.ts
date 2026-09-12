@@ -7,9 +7,21 @@ export type ValidatorFn = (value: string) => ValidationResult;
 export type ValidatorsModule = { validators: Record<string, ValidatorFn> };
 export type ModuleImporter = (url: string) => Promise<ValidatorsModule>;
 
-/** Real dynamic ESM import — the browser resolves and executes the bundle directly, no bundler step. */
-const importModule: ModuleImporter = (url) =>
-  import(/* @vite-ignore */ url) as Promise<ValidatorsModule>;
+/**
+ * Real dynamic ESM import — the browser resolves and executes the bundle directly, no bundler
+ * step. Built via `new Function` rather than a literal `import(url)` expression: every
+ * bundler we ship through here (Vite for the libs, Next's Turbopack for the apps) tries to
+ * statically resolve a literal `import()` call at build time and fails hard on a
+ * non-literal/runtime URL ("Module not found: Can't resolve <dynamic>"), even though it's
+ * completely valid for the browser to execute at runtime. Hiding the `import()` inside a
+ * runtime-constructed function is the standard way to opt a truly dynamic import out of that
+ * static analysis, portably across bundlers.
+ */
+const dynamicImport = new Function(
+  'specifier',
+  'return import(specifier);',
+) as (specifier: string) => Promise<ValidatorsModule>;
+const importModule: ModuleImporter = (url) => dynamicImport(url);
 
 /**
  * Pattern 2, the loading half: dynamic-import the compiled validator bundle straight from the

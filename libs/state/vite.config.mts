@@ -39,6 +39,12 @@ export default defineConfig(() => ({
     rolldownOptions: {
       // External packages that should not be bundled into your library.
       external: ['react', 'react-dom', 'react/jsx-runtime'],
+      output: {
+        // useQuoteSession touches sessionStorage/React state and only ever runs client-side —
+        // see ui-components' vite.config.mts for why this has to be a banner rather than
+        // useQuoteSession.ts's own source-level 'use client' directive.
+        banner: "'use client';",
+      },
     },
   },
 }));

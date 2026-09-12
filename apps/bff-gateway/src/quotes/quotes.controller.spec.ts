@@ -10,6 +10,8 @@ describe('QuotesController', () => {
     getQuoteSchema: jest.Mock;
     patchQuote: jest.Mock;
     pullReport: jest.Mock;
+    requestBind: jest.Mock;
+    getBindStatus: jest.Mock;
   };
 
   beforeEach(async () => {
@@ -18,6 +20,8 @@ describe('QuotesController', () => {
       getQuoteSchema: jest.fn(),
       patchQuote: jest.fn(),
       pullReport: jest.fn(),
+      requestBind: jest.fn(),
+      getBindStatus: jest.fn(),
     };
     const moduleRef = await Test.createTestingModule({
       controllers: [QuotesController],
@@ -75,5 +79,37 @@ describe('QuotesController', () => {
     ];
     await controller.patchQuote('q1', ops);
     expect(client.patchQuote).toHaveBeenCalledWith('q1', ops);
+  });
+
+  it('requestBind proxies to the rating service', async () => {
+    client.requestBind.mockResolvedValue({
+      success: true,
+      data: { jobId: 'j1', quoteId: 'q1', status: 'pending', attemptCount: 0 },
+    });
+    const result = await controller.requestBind('q1');
+    expect(client.requestBind).toHaveBeenCalledWith('q1');
+    expect(result).toEqual({
+      jobId: 'j1',
+      quoteId: 'q1',
+      status: 'pending',
+      attemptCount: 0,
+    });
+  });
+
+  it('getBindStatus proxies to the rating service', async () => {
+    client.getBindStatus.mockResolvedValue({
+      success: true,
+      data: {
+        jobId: 'j1',
+        quoteId: 'q1',
+        status: 'running',
+        attemptCount: 1,
+        lastError: null,
+        updatedAt: 'now',
+      },
+    });
+    const result = await controller.getBindStatus('q1');
+    expect(client.getBindStatus).toHaveBeenCalledWith('q1');
+    expect(result.status).toBe('running');
   });
 });
