@@ -8,6 +8,9 @@
     },
     {
       "path": "./libs/ui-components"
+    },
+    {
+      "path": "./libs/form-renderer"
     }
   ],
   "compilerOptions": {}
