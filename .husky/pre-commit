@@ -1,0 +1,10 @@
+npx lint-staged
+
+# Diff against the immediately-preceding commit rather than a fixed base branch: we commit
+# directly to master in this sample, so comparing against a branch tip would always be a
+# no-op diff. Falls back to checking everything on the very first commit (no HEAD~1 yet).
+if git rev-parse --verify HEAD~1 >/dev/null 2>&1; then
+  npx nx affected -t lint test typecheck --base=HEAD~1 --head=HEAD
+else
+  npx nx run-many -t lint test typecheck
+fi
