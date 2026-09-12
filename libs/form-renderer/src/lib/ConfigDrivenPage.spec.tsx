@@ -1,6 +1,10 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { PageConfig } from 'api-client';
 import { ConfigDrivenPage } from './ConfigDrivenPage.js';
+import { useValidatorRunner } from './useValidatorRunner.js';
+
+jest.mock('./useValidatorRunner.js', () => ({ useValidatorRunner: jest.fn() }));
+const mockUseValidatorRunner = useValidatorRunner as jest.Mock;
 
 const pageConfig: PageConfig = {
   key: 'driver-info',
@@ -12,6 +16,13 @@ const pageConfig: PageConfig = {
       fields: [
         { key: 'firstName', label: 'First name', type: 'text', required: true },
         { key: 'dob', label: 'Date of birth', type: 'date', required: true },
+        {
+          key: 'ssn',
+          label: 'SSN',
+          type: 'text',
+          required: true,
+          validator: 'ssn',
+        },
         {
           key: 'maritalStatus',
           label: 'Marital status',
@@ -27,6 +38,12 @@ const pageConfig: PageConfig = {
 };
 
 describe('ConfigDrivenPage', () => {
+  beforeEach(() => {
+    mockUseValidatorRunner.mockReturnValue({
+      validate: jest.fn().mockResolvedValue({ valid: true }),
+    });
+  });
+
   it('renders one input per configured field, grouped by section', () => {
     render(
       <ConfigDrivenPage
@@ -76,6 +93,58 @@ describe('ConfigDrivenPage', () => {
       />,
     );
     expect(screen.getByText(/Select marital status/)).toBeInTheDocument();
+  });
+
+  it('runs the field validator on blur (Pattern 2) and shows its error message', async () => {
+    const validate = jest
+      .fn()
+      .mockResolvedValue({ valid: false, message: 'Invalid SSN prefix' });
+    mockUseValidatorRunner.mockReturnValue({ validate });
+
+    render(
+      <ConfigDrivenPage
+        config={pageConfig}
+        values={{ ssn: '000-45-6789' }}
+        onFieldChange={() => undefined}
+        ratingServiceBaseUrl="http://localhost:4000"
+      />,
+    );
+    fireEvent.blur(screen.getByLabelText(/SSN/));
+
+    expect(validate).toHaveBeenCalledWith('ssn', '000-45-6789');
+    await waitFor(() =>
+      expect(screen.getByText('Invalid SSN prefix')).toBeInTheDocument(),
+    );
+  });
+
+  it('does not call the validator for a field with no validator name configured', () => {
+    const validate = jest.fn().mockResolvedValue({ valid: true });
+    mockUseValidatorRunner.mockReturnValue({ validate });
+
+    render(
+      <ConfigDrivenPage
+        config={pageConfig}
+        values={{}}
+        onFieldChange={() => undefined}
+      />,
+    );
+    fireEvent.blur(screen.getByLabelText(/First name/));
+
+    expect(validate).not.toHaveBeenCalled();
+  });
+
+  it('a server-reported error takes precedence over a passing client-side validation', () => {
+    render(
+      <ConfigDrivenPage
+        config={pageConfig}
+        values={{ ssn: '123-45-6789' }}
+        errors={{ ssn: 'SSN already on file for another quote' }}
+        onFieldChange={() => undefined}
+      />,
+    );
+    expect(
+      screen.getByText('SSN already on file for another quote'),
+    ).toBeInTheDocument();
   });
 
   it('throws a clear error for an unregistered field type rather than silently skipping it', () => {
