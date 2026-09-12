@@ -11,6 +11,12 @@
     },
     {
       "path": "./libs/form-renderer"
+    },
+    {
+      "path": "./apps/bff-gateway-e2e"
+    },
+    {
+      "path": "./apps/bff-gateway"
     }
   ],
   "compilerOptions": {}
