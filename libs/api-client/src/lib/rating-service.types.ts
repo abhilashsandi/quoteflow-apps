@@ -50,6 +50,14 @@ export interface BundleManifest {
 }
 
 export type QuoteAnswers = Record<string, Record<string, unknown>>;
+export interface CarrierRef {
+  code: string;
+  name: string;
+}
+export interface BundleRef {
+  manifestUrl: string;
+  configKey: string;
+}
 
 export interface JsonPatchOp {
   op: 'add' | 'replace' | 'remove' | 'move' | 'copy' | 'test';
@@ -67,9 +75,11 @@ export interface CreateQuoteResponse {
 export interface QuoteSchemaResponse {
   quoteId: string;
   funnelStage: FunnelStage;
-  carrier: { code: string; name: string };
+  carrier: CarrierRef;
   schema: RouteConfig;
-  bundle: { manifestUrl: string; configKey: string };
+  bundle: BundleRef;
+  /** The quote's saved answers — lets a resume link (sessionStorage empty, quoteId known) hydrate without a second endpoint. */
+  answers: QuoteAnswers;
 }
 
 export interface PatchQuoteResponse {
