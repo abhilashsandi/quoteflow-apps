@@ -11,13 +11,14 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
-  StepIndicator,
+  SidebarSteps,
 } from 'ui-components';
 import {
   BFF_GATEWAY_URL,
   CARRIER_CODE,
-  FUNNEL_STEPS,
+  FUNNEL_ORDER,
   RATING_SERVICE_URL,
+  SIDEBAR_STEP_GROUPS,
 } from '../../lib/config';
 
 interface BindPollState {
@@ -93,7 +94,7 @@ export default function QuotePage() {
 
   if (session.status === 'idle' || session.status === 'loading') {
     return (
-      <AppShell brand="QuoteFlow">
+      <AppShell brand="QuoteFlow" gradient>
         <p className="text-muted-foreground">Setting up your quote…</p>
       </AppShell>
     );
@@ -101,7 +102,7 @@ export default function QuotePage() {
 
   if (session.status === 'error') {
     return (
-      <AppShell brand="QuoteFlow">
+      <AppShell brand="QuoteFlow" gradient>
         <p className="text-destructive">
           Something went wrong: {session.error}
         </p>
@@ -109,17 +110,25 @@ export default function QuotePage() {
     );
   }
 
+  const currentStepKey = session.funnelStage ?? 'schema';
+  const completedStepKeys = FUNNEL_ORDER.slice(
+    0,
+    FUNNEL_ORDER.indexOf(currentStepKey as (typeof FUNNEL_ORDER)[number]),
+  );
+
   return (
     <AppShell
       brand="QuoteFlow"
-      progress={
-        <StepIndicator
-          steps={FUNNEL_STEPS}
-          currentStepKey={session.funnelStage ?? 'schema'}
+      gradient
+      sidebar={
+        <SidebarSteps
+          groups={SIDEBAR_STEP_GROUPS}
+          currentStepKey={currentStepKey}
+          completedStepKeys={completedStepKeys}
         />
       }
     >
-      <div className="grid gap-8 md:grid-cols-[2fr_1fr]">
+      <div className="grid gap-8 lg:grid-cols-[2fr_1fr]">
         <div>
           {session.funnelStage === 'bind' ? (
             <Card>
@@ -150,15 +159,17 @@ export default function QuotePage() {
               </CardContent>
             </Card>
           ) : currentPage ? (
-            <ConfigDrivenPage
-              config={currentPage}
-              values={pageValues as Record<string, string>}
-              errors={fieldErrors}
-              onFieldChange={(fieldKey, value) =>
-                session.setFieldValue(currentPage.key, fieldKey, value)
-              }
-              ratingServiceBaseUrl={RATING_SERVICE_URL}
-            />
+            <Card className="p-6">
+              <ConfigDrivenPage
+                config={currentPage}
+                values={pageValues as Record<string, string>}
+                errors={fieldErrors}
+                onFieldChange={(fieldKey, value) =>
+                  session.setFieldValue(currentPage.key, fieldKey, value)
+                }
+                ratingServiceBaseUrl={RATING_SERVICE_URL}
+              />
+            </Card>
           ) : null}
         </div>
 

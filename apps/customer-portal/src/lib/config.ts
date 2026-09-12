@@ -14,9 +14,27 @@ export const RATING_SERVICE_URL =
 /** Only one carrier exists in this sample. */
 export const CARRIER_CODE = 'acme';
 
+export const FUNNEL_ORDER = ['schema', 'rc1', 'rc2', 'bind'] as const;
+
 export const FUNNEL_STEPS = [
   { key: 'schema', label: 'Your info' },
   { key: 'rc1', label: 'Quote' },
   { key: 'rc2', label: 'Driving record' },
   { key: 'bind', label: 'Purchase' },
+];
+
+/** Grouped for SidebarSteps — same four stages, organized the way a longer real flow would be. */
+export const SIDEBAR_STEP_GROUPS = [
+  {
+    heading: 'Build your plan',
+    steps: [{ key: 'schema', label: 'Personal Details' }],
+  },
+  {
+    heading: 'Review & purchase',
+    steps: [
+      { key: 'rc1', label: 'Your Quote' },
+      { key: 'rc2', label: 'Driving Record' },
+      { key: 'bind', label: 'Purchase' },
+    ],
+  },
 ];
