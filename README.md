@@ -161,12 +161,24 @@ with exponential backoff (1s/2s/4s.../10s cap) before landing in the DLQ; `npm r
 apps/automation-worker -- list` inspects it non-destructively, `-- replay <n>` puts jobs back on
 the main queue with a reset retry count.
 
-**Scope note:** `customer-portal`/`agent-portal` currently only ever call `POST /quotes` with
-`carrierCode: 'acme'` (see `lib/config.ts`'s `CARRIER_CODE`) — there's no carrier picker UI.
-Vantage Direct's whole quote → bind lifecycle is real and fully wired (verified live via direct
-API calls against Repo 1 and this repo's worker), it's just not reachable by clicking through
-either portal yet. Adding a picker is a small, self-contained UI change; the backend and worker
-need nothing further.
+**GaQ → compare → PaP, in `customer-portal`:** `/quote/start` is a server-rendered "Get a Quote"
+form (a plain `<form>` posting to a Next.js Server Action, `apps/customer-portal/src/app/quote/
+start/actions.ts` — no client-side session store involved) that collects one shared set of
+driver + vehicle fields and rates *both* carriers in one submission: it creates an Acme quote and
+a Vantage quote, PATCHes the same driver-info answers into each plus Vantage's vehicle-info, and
+redirects to `/quote/compare?acme=<id>&vantage=<id>`. That page is also server-rendered — it
+fetches both quotes' schema (which now echoes a recomputed `rate`, see Repo 1's README) and shows
+them side by side. Choosing a carrier is a plain link to `/quote?resume=<quoteId>`; the existing
+"Purchase a Policy" flow (`/quote`, `useQuoteSession`, the rc1→rc2→bind funnel) is completely
+unchanged — resuming a quoteId was already a first-class path (`useQuoteSession`'s
+`resumeQuoteId` hydration), so GaQ only needed a way to arrive at it with a carrier already
+chosen and rated. Both carriers' bind mechanisms (Acme's Playwright drive, Vantage's direct API
+call) are reachable end-to-end through this flow, verified live for each.
+
+**Scope note:** this GaQ/compare flow is `customer-portal`-only — `agent-portal` still starts a
+single Acme quote directly (see `lib/config.ts`'s `CARRIER_CODE`), matching the same
+one-portal-first precedent Vantage Direct's bind mechanism set. Extending it to `agent-portal` is
+a small, self-contained UI change; the backend and worker need nothing further.
 
 ## Scripts
 

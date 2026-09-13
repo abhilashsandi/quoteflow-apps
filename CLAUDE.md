@@ -23,7 +23,14 @@ rules an agent working in this repo needs before making a change.
   `useCarrierRouteConfig()` (from `libs/form-renderer`) — that's what applies Repo 1's
   agent/customer override chain. If you're about to write agent-only or customer-only page
   logic, stop: the override almost certainly belongs in Repo 1's `routeConfigs/overrides.ts`
-  instead, not here.
+  instead, not here. `customer-portal` alone also has `quote/start` (GaQ, server-rendered, a
+  Server Action in `actions.ts`) and `quote/compare` — both server-rendered, both carrier-
+  agnostic; they only ever call bff-gateway server-side (never the browser), same as
+  `lib/flags.ts`. `/quote` itself is a thin Server Component (`page.tsx`) around the real
+  client logic in `QuoteClient.tsx` — split that way specifically so `page.tsx` can `await`
+  `searchParams` (for `?resume=<quoteId>`) and hand `QuoteClient` a plain prop, not a Promise;
+  reading a Promise prop via React's `use()` inside a client page component suspends with no
+  Suspense boundary to catch it in this app's tests, so don't undo that split.
 - `apps/bff-gateway` — NestJS. `src/quotes` proxies to Repo 1, `src/flags` evaluates feature
   flags, `src/assistant` runs the Gemini + RAG assistant. `src/telemetry/otel.ts` must stay the
   first import in `main.ts` (see docs/adr/0002 — auto-instrumentation patches modules at
