@@ -1,0 +1,10 @@
+/* Shared design tokens + Tailwind entry — the same stylesheet libs/ui-components' own
+   Storybook uses, so this app and its components never drift from each other. */
+@import '../../../../libs/ui-components/src/styles/globals.css';
+
+/* Tailwind v4's automatic content detection respects .gitignore, which excludes dist/ — so it
+   never sees the utility class names baked into the built library bundles this app actually
+   imports from. Point it at the *source* .tsx files instead (never gitignored), for every
+   workspace lib that uses Tailwind classes directly. */
+@source '../../../../libs/ui-components/src';
+@source '../../../../libs/form-renderer/src';

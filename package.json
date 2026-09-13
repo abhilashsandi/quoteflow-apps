@@ -6,7 +6,8 @@
     "prepare": "husky",
     "storybook": "nx run ui-components:storybook",
     "dev:bff-gateway": "nx run bff-gateway:serve",
-    "dev:customer-portal": "nx run customer-portal:dev"
+    "dev:customer-portal": "nx run customer-portal:dev",
+    "dev:agent-portal": "nx run agent-portal:dev"
   },
   "private": true,
   "devDependencies": {

@@ -1,0 +1,16 @@
+{
+  "name": "agent-portal",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "targets": {
+    "dev": {
+      "options": {
+        "command": "next dev -p 3001"
+      }
+    },
+    "start": {
+      "options": {
+        "command": "next start -p 3001"
+      }
+    }
+  }
+}

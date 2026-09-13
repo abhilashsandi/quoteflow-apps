@@ -23,6 +23,9 @@
     },
     {
       "path": "./apps/customer-portal"
+    },
+    {
+      "path": "./apps/agent-portal"
     }
   ],
   "compilerOptions": {}
