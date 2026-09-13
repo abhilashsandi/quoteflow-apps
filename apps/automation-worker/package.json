@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
-    "dev": "concurrently -k -n portal,worker \"tsx watch src/mock-carrier-portal/server.ts\" \"tsx watch src/worker/main.ts\"",
+    "dev": "concurrently -k -n portal,api,worker \"tsx watch src/mock-carrier-portal/server.ts\" \"tsx watch src/mock-carrier-api/server.ts\" \"tsx watch src/worker/main.ts\"",
     "dlq": "tsx src/cli/dlq-cli.ts"
   },
   "nx": {
@@ -24,6 +24,7 @@
           "main": "apps/automation-worker/src/worker/main.ts",
           "additionalEntryPoints": [
             "apps/automation-worker/src/mock-carrier-portal/server.ts",
+            "apps/automation-worker/src/mock-carrier-api/server.ts",
             "apps/automation-worker/src/cli/dlq-cli.ts"
           ],
           "tsConfig": "apps/automation-worker/tsconfig.app.json",

@@ -35,6 +35,17 @@ const envSchema = z.object({
   /** The mock carrier portal's own simulated failure rate on /bind-form submissions —
    * models a real carrier system being flaky, independent of anything the worker does. */
   MOCK_PORTAL_FAILURE_RATE: z.coerce.number().min(0).max(1).default(0.1),
+  /** Where the worker's API-driven carriers (currently: Vantage) get bound — see
+   * bind-job-handler.ts's API_DRIVEN_CARRIER_CODES. */
+  MOCK_CARRIER_API_URL: z.string().default('http://localhost:4300'),
+  /** Where the mock carrier API's own Express server listens. */
+  MOCK_CARRIER_API_PORT: z.coerce.number().int().positive().default(4300),
+  /** The bearer token the worker authenticates to the mock carrier API with — a fixed dev
+   * value is fine here since this never talks to a real carrier. */
+  MOCK_CARRIER_API_KEY: z.string().default('dev-vantage-api-key'),
+  /** The mock carrier API's own simulated failure rate on /v1/bind calls — the API-driven
+   * equivalent of MOCK_PORTAL_FAILURE_RATE above. */
+  MOCK_CARRIER_API_FAILURE_RATE: z.coerce.number().min(0).max(1).default(0.1),
 });
 
 function loadEnv() {

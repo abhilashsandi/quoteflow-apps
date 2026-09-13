@@ -18,6 +18,8 @@ async function main(): Promise<void> {
     ratingService,
     mockCarrierPortalUrl: env.MOCK_CARRIER_PORTAL_URL,
     headless: env.BROWSER_HEADLESS,
+    carrierApiBaseUrl: env.MOCK_CARRIER_API_URL,
+    carrierApiKey: env.MOCK_CARRIER_API_KEY,
     simulatedFailureRate: env.SIMULATED_FAILURE_RATE,
   });
   await rabbitMQ.consume(handleBindJob);
