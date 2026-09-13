@@ -32,6 +32,9 @@
     },
     {
       "path": "./apps/automation-worker"
+    },
+    {
+      "path": "./libs/ai-assistant"
     }
   ],
   "compilerOptions": {}

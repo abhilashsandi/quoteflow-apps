@@ -13,6 +13,7 @@ import {
   CardTitle,
   SidebarSteps,
 } from 'ui-components';
+import { AssistantChatWidget } from '../../components/AssistantChatWidget';
 import {
   BFF_GATEWAY_URL,
   CARRIER_CODE,
@@ -198,6 +199,8 @@ export default function QuotePage() {
           </CardContent>
         </Card>
       </div>
+
+      <AssistantChatWidget quoteId={session.quoteId ?? undefined} />
     </AppShell>
   );
 }

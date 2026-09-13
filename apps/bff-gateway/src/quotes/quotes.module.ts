@@ -5,5 +5,6 @@ import { RatingServiceClientService } from './rating-service-client.service.js';
 @Module({
   controllers: [QuotesController],
   providers: [RatingServiceClientService],
+  exports: [RatingServiceClientService],
 })
 export class QuotesModule {}

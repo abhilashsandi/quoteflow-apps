@@ -8,6 +8,7 @@ export * from './atoms/Label.js';
 export * from './atoms/Select.js';
 
 export * from './molecules/Card.js';
+export * from './molecules/ChatMessageBubble.js';
 export * from './molecules/FeedbackButtons.js';
 export * from './molecules/FormField.js';
 export * from './molecules/OptionCard.js';

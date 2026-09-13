@@ -2,7 +2,15 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { useQuoteSession } from 'state';
 import QuotePage from './page';
 
-jest.mock('state', () => ({ useQuoteSession: jest.fn() }));
+jest.mock('state', () => ({
+  useQuoteSession: jest.fn(),
+  useChatStream: jest.fn(() => ({
+    messages: [],
+    status: 'idle',
+    error: null,
+    sendMessage: jest.fn(),
+  })),
+}));
 jest.mock('form-renderer', () => ({
   ConfigDrivenPage: () => <div data-testid="config-driven-page" />,
 }));
@@ -32,13 +40,11 @@ function baseSession(overrides: Partial<Record<string, unknown>> = {}) {
     submitPage: jest.fn().mockResolvedValue({ success: true }),
     pullReport: jest.fn().mockResolvedValue({ success: true }),
     requestBind: jest.fn().mockResolvedValue({ success: true }),
-    getBindStatus: jest
-      .fn()
-      .mockResolvedValue({
-        status: 'pending',
-        attemptCount: 0,
-        lastError: null,
-      }),
+    getBindStatus: jest.fn().mockResolvedValue({
+      status: 'pending',
+      attemptCount: 0,
+      lastError: null,
+    }),
     ...overrides,
   };
 }
