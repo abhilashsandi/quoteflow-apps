@@ -29,6 +29,9 @@
     },
     {
       "path": "./libs/feature-flags"
+    },
+    {
+      "path": "./apps/automation-worker"
     }
   ],
   "compilerOptions": {}

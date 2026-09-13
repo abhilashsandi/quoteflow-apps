@@ -1,0 +1,133 @@
+{
+  "name": "automation-worker",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently -k -n portal,worker \"tsx watch src/mock-carrier-portal/server.ts\" \"tsx watch src/worker/main.ts\"",
+    "dlq": "tsx src/cli/dlq-cli.ts"
+  },
+  "nx": {
+    "targets": {
+      "build": {
+        "executor": "@nx/esbuild:esbuild",
+        "outputs": [
+          "{options.outputPath}"
+        ],
+        "defaultConfiguration": "production",
+        "options": {
+          "platform": "node",
+          "outputPath": "apps/automation-worker/dist",
+          "format": [
+            "cjs"
+          ],
+          "bundle": false,
+          "main": "apps/automation-worker/src/worker/main.ts",
+          "additionalEntryPoints": [
+            "apps/automation-worker/src/mock-carrier-portal/server.ts",
+            "apps/automation-worker/src/cli/dlq-cli.ts"
+          ],
+          "tsConfig": "apps/automation-worker/tsconfig.app.json",
+          "esbuildOptions": {
+            "sourcemap": true,
+            "outExtension": {
+              ".js": ".js"
+            }
+          }
+        },
+        "configurations": {
+          "development": {},
+          "production": {
+            "esbuildOptions": {
+              "sourcemap": false,
+              "outExtension": {
+                ".js": ".js"
+              }
+            }
+          }
+        }
+      },
+      "prune-lockfile": {
+        "dependsOn": [
+          "build"
+        ],
+        "cache": true,
+        "executor": "@nx/js:prune-lockfile",
+        "outputs": [
+          "{workspaceRoot}/apps/automation-worker/dist/package.json",
+          "{workspaceRoot}/apps/automation-worker/dist/package-lock.json"
+        ],
+        "options": {
+          "buildTarget": "build"
+        }
+      },
+      "copy-workspace-modules": {
+        "dependsOn": [
+          "build"
+        ],
+        "cache": true,
+        "outputs": [
+          "{workspaceRoot}/apps/automation-worker/dist/workspace_modules"
+        ],
+        "executor": "@nx/js:copy-workspace-modules",
+        "options": {
+          "buildTarget": "build"
+        }
+      },
+      "prune": {
+        "dependsOn": [
+          "prune-lockfile",
+          "copy-workspace-modules"
+        ],
+        "executor": "nx:noop"
+      },
+      "serve": {
+        "continuous": true,
+        "executor": "@nx/js:node",
+        "defaultConfiguration": "development",
+        "dependsOn": [
+          "build"
+        ],
+        "options": {
+          "buildTarget": "automation-worker:build",
+          "runBuildTargetDependencies": false
+        },
+        "configurations": {
+          "development": {
+            "buildTarget": "automation-worker:build:development"
+          },
+          "production": {
+            "buildTarget": "automation-worker:build:production"
+          }
+        }
+      },
+      "test": {
+        "options": {
+          "passWithNoTests": true
+        }
+      },
+      "dev": {
+        "continuous": true,
+        "executor": "nx:run-commands",
+        "options": {
+          "cwd": "apps/automation-worker",
+          "command": "npm run dev"
+        }
+      }
+    }
+  },
+  "dependencies": {
+    "amqplib": "^0.10.4",
+    "dotenv": "^16.4.7",
+    "express": "^4.19.2",
+    "playwright": "^1.63.0",
+    "zod": "^4.6.2"
+  },
+  "devDependencies": {
+    "@types/amqplib": "^0.10.5",
+    "@types/express": "^4.17.25",
+    "@types/supertest": "^6.0.2",
+    "concurrently": "^9.1.0",
+    "supertest": "^7.0.0",
+    "tsx": "^4.19.2"
+  }
+}

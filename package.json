@@ -7,7 +7,8 @@
     "storybook": "nx run ui-components:storybook",
     "dev:bff-gateway": "nx run bff-gateway:serve",
     "dev:customer-portal": "nx run customer-portal:dev",
-    "dev:agent-portal": "nx run agent-portal:dev"
+    "dev:agent-portal": "nx run agent-portal:dev",
+    "dev:automation-worker": "nx run automation-worker:dev"
   },
   "private": true,
   "devDependencies": {
@@ -17,6 +18,7 @@
     "@nestjs/schematics": "^11.0.0",
     "@nestjs/testing": "^11.0.0",
     "@next/eslint-plugin-next": "^16.1.6",
+    "@nx/esbuild": "23.2.0",
     "@nx/eslint": "^23.2.0",
     "@nx/eslint-plugin": "23.2.0",
     "@nx/jest": "23.2.0",
@@ -45,6 +47,7 @@
     "@vitejs/plugin-react": "^6.0.0",
     "ajv": "^8.0.0",
     "babel-jest": "~30.3.0",
+    "esbuild": "^0.27.0",
     "eslint": "^9.8.0",
     "eslint-config-next": "^16.1.6",
     "eslint-config-prettier": "^10.0.0",
