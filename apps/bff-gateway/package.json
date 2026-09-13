@@ -71,6 +71,7 @@
     "@nestjs/platform-express": "^11.0.0",
     "api-client": "^0.0.1",
     "dotenv": "^16.4.7",
+    "feature-flags": "^0.0.1",
     "reflect-metadata": "^0.2.0",
     "rxjs": "^7.8.0",
     "tslib": "^2.3.0",

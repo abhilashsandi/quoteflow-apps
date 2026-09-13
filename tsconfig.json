@@ -26,6 +26,9 @@
     },
     {
       "path": "./apps/agent-portal"
+    },
+    {
+      "path": "./libs/feature-flags"
     }
   ],
   "compilerOptions": {}

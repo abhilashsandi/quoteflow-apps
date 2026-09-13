@@ -23,6 +23,9 @@
   ],
   "references": [
     {
+      "path": "../../libs/feature-flags/tsconfig.lib.json"
+    },
+    {
       "path": "../../libs/api-client/tsconfig.lib.json"
     }
   ]

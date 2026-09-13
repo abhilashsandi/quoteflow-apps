@@ -1,10 +1,14 @@
 import { Car } from 'lucide-react';
 import Link from 'next/link';
 import { AppShell, Button, OptionCard } from 'ui-components';
+import { getFlags } from '../lib/flags';
 
 // Server-rendered for fast first paint — no quoteId exists yet, so there's nothing here that
 // needs client-side session state. See the README for the SSR/CSR boundary this app follows.
-export default function HomePage() {
+// Also resolves the show-savings-badge feature flag server-side (via bff-gateway) before the
+// page ever reaches the browser — no client fetch, no flicker.
+export default async function HomePage() {
+  const flags = await getFlags();
   return (
     <AppShell
       brand="QuoteFlow"
@@ -25,6 +29,7 @@ export default function HomePage() {
           icon={<Car />}
           title="Auto"
           description="I need to insure my vehicle(s)."
+          badge={flags.showSavingsBadge ? 'Save up to 15%' : undefined}
           selected
           className="w-full"
         />

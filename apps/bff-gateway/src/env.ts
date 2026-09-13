@@ -24,6 +24,11 @@ const envSchema = z.object({
   NODE_ENV: z
     .enum(['development', 'test', 'production'])
     .default('development'),
+  /** Path (relative to the Nx workspace root — where `nx run bff-gateway:serve` runs from,
+   * regardless of which app it's serving) to the JSON file the local feature-flag provider
+   * reads at startup. See libs/feature-flags's README for the LaunchDarkly-shaped provider
+   * this would swap to in a real deployment. */
+  FEATURE_FLAGS_FILE: z.string().default('apps/bff-gateway/flags.local.json'),
 });
 
 function loadEnv() {
