@@ -11,8 +11,28 @@ export const BFF_GATEWAY_URL =
 export const RATING_SERVICE_URL =
   process.env.NEXT_PUBLIC_RATING_SERVICE_URL ?? 'http://localhost:4000';
 
-/** Only one carrier exists in this sample. */
+/** Default carrier for a direct `/quote` visit (no `resume` param, i.e. bypassing GaQ/compare). */
 export const CARRIER_CODE = 'acme';
+
+/** The two carriers GaQ (`/quote/start`) rates side by side — see `quote/start/actions.ts`. */
+export const ACME_CARRIER_CODE = 'acme';
+export const VANTAGE_CARRIER_CODE = 'vantage';
+
+/**
+ * Fields GaQ collects in one step, covering both carriers' `driver-info` page (identical field
+ * keys on both) plus Vantage's `vehicle-info` page — Acme's PATCH just omits the vehicle fields.
+ * See quoteflow-rating-service's `src/carriers/{acme,vantage}/routeConfigs/base.ts` for the
+ * source of truth these mirror.
+ */
+export const GAQ_DRIVER_FIELDS = [
+  'firstName',
+  'lastName',
+  'dob',
+  'ssn',
+  'phone',
+  'maritalStatus',
+] as const;
+export const GAQ_VEHICLE_FIELDS = ['vin', 'make', 'model', 'year'] as const;
 
 export const FUNNEL_ORDER = ['schema', 'rc1', 'rc2', 'bind'] as const;
 

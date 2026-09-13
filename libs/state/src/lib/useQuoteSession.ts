@@ -59,7 +59,7 @@ function fromSchemaResponse(
     schema: data.schema,
     bundle: data.bundle,
     answers: data.answers,
-    rate: null,
+    rate: data.rate,
     status: 'ready',
     error: null,
   };

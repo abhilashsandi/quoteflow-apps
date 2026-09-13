@@ -11,10 +11,10 @@ describe('HomePage', () => {
     mockGetFlags.mockResolvedValue({ showSavingsBadge: false });
   });
 
-  it('links to /quote to start the config-driven flow', async () => {
+  it('links to /quote/start to begin the GaQ flow', async () => {
     render(await HomePage());
     const link = screen.getByRole('link', { name: /get a quote/i });
-    expect(link).toHaveAttribute('href', '/quote');
+    expect(link).toHaveAttribute('href', '/quote/start');
   });
 
   it('names the fictional carrier', async () => {

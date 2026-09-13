@@ -80,6 +80,8 @@ export interface QuoteSchemaResponse {
   bundle: BundleRef;
   /** The quote's saved answers — lets a resume link (sessionStorage empty, quoteId known) hydrate without a second endpoint. */
   answers: QuoteAnswers;
+  /** Recomputed from stored answers on every call — null until the quote leaves the `schema` stage. */
+  rate: RatingResult | null;
 }
 
 export interface PatchQuoteResponse {

@@ -13,7 +13,7 @@ export default async function HomePage() {
     <AppShell
       brand="QuoteFlow"
       gradient
-      footer="© Acme Insurance — a fictional carrier, portfolio sample only"
+      footer="© Acme Insurance & Vantage Direct — fictional carriers, portfolio sample only"
     >
       <div className="mx-auto flex max-w-md flex-col items-center gap-8 py-8 text-center">
         <div className="flex flex-col gap-2">
@@ -21,7 +21,8 @@ export default async function HomePage() {
             What would you like to insure?
           </h1>
           <p className="text-muted-foreground text-sm">
-            Get a personalized auto quote from Acme Insurance in a few minutes.
+            Compare a personalized auto quote from Acme Insurance and Vantage
+            Direct in a few minutes.
           </p>
         </div>
 
@@ -35,7 +36,7 @@ export default async function HomePage() {
         />
 
         <Button size="lg" asChild>
-          <Link href="/quote">Get a quote</Link>
+          <Link href="/quote/start">Get a quote</Link>
         </Button>
       </div>
     </AppShell>

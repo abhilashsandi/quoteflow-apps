@@ -46,6 +46,7 @@ describe('useQuoteSession', () => {
           },
           bundle: { manifestUrl: '/bundles/manifest.json', configKey: 'acme' },
           answers: { 'driver-info': {} },
+          rate: null,
         },
       },
     );
@@ -300,6 +301,7 @@ describe('useQuoteSession', () => {
         },
         bundle: { manifestUrl: '/bundles/manifest.json', configKey: 'acme' },
         answers: { 'driver-info': { firstName: 'Jane' } },
+        rate: { premium: 600, currency: 'USD', ratedAt: 'now' },
       },
     });
 
@@ -309,6 +311,13 @@ describe('useQuoteSession', () => {
 
     await waitFor(() => expect(result.current.status).toBe('ready'));
     expect(result.current.answers['driver-info']?.firstName).toBe('Jane');
+    // Regression guard: a resumed quote (e.g. arriving from the compare page) must show its
+    // already-computed price immediately, not fall back to null until the user re-submits.
+    expect(result.current.rate).toEqual({
+      premium: 600,
+      currency: 'USD',
+      ratedAt: 'now',
+    });
     expect(
       JSON.parse(window.sessionStorage.getItem('quoteflow:quote:q1') ?? '{}')
         .funnelStage,
