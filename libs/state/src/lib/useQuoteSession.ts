@@ -30,6 +30,7 @@ function selectSessionData(store: QuoteSessionStore): QuoteSessionData {
     bundle,
     answers,
     rate,
+    report,
     status,
     error,
   } = store;
@@ -42,6 +43,7 @@ function selectSessionData(store: QuoteSessionStore): QuoteSessionData {
     bundle,
     answers,
     rate,
+    report,
     status,
     error,
   };
@@ -60,6 +62,10 @@ function fromSchemaResponse(
     bundle: data.bundle,
     answers: data.answers,
     rate: data.rate,
+    // The schemas endpoint doesn't echo the MVR report (see quoteflow-rating-service's
+    // GET /quotes/:quoteId/schemas) — not a gap in practice, since GaQ only ever advances a
+    // quote to rc1, so a resumed/hydrated quote is never already past rc2.
+    report: null,
     status: 'ready',
     error: null,
   };
@@ -190,6 +196,7 @@ export function useQuoteSession({
     session.patch({
       funnelStage: result.data.funnelStage,
       rate: result.data.rate,
+      report: result.data.report,
     });
     saveToSessionStorage(
       quoteId,

@@ -23,6 +23,26 @@ const driverInfoPage = {
   sections: [],
 };
 
+const driverInfoPageWithFields = {
+  key: 'driver-info',
+  title: 'Driver Information',
+  sections: [
+    {
+      key: 'personal',
+      title: 'Personal Information',
+      fields: [
+        { key: 'firstName', label: 'First name', type: 'text' as const },
+        {
+          key: 'ssn',
+          label: 'Social Security Number',
+          type: 'text' as const,
+          validator: 'ssn',
+        },
+      ],
+    },
+  ],
+};
+
 function baseSession(overrides: Partial<Record<string, unknown>> = {}) {
   return {
     quoteId: 'q1',
@@ -33,6 +53,7 @@ function baseSession(overrides: Partial<Record<string, unknown>> = {}) {
     bundle: { manifestUrl: '/bundles/manifest.json', configKey: 'acme' },
     answers: {},
     rate: null,
+    report: null,
     status: 'ready',
     error: null,
     startQuote: jest.fn(),
@@ -133,12 +154,70 @@ describe('QuoteClient', () => {
     expect(session.submitPage).not.toHaveBeenCalled();
   });
 
+  it('shows a read-only summary of the submitted answers at rc1, not the same editable form', () => {
+    mockUseQuoteSession.mockReturnValue(
+      baseSession({
+        funnelStage: 'rc1',
+        schema: { pages: [driverInfoPageWithFields] },
+        answers: {
+          'driver-info': { firstName: 'Jane', ssn: '123-45-6789' },
+        },
+      }),
+    );
+    render(<QuoteClient />);
+
+    expect(screen.getByText('Your quote is ready')).toBeInTheDocument();
+    expect(screen.getByText('Jane')).toBeInTheDocument();
+    // The SSN is masked in the summary, never shown in full.
+    expect(screen.getByText('•••-••-6789')).toBeInTheDocument();
+    expect(screen.queryByText('123-45-6789')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('config-driven-page')).not.toBeInTheDocument();
+  });
+
   it('shows "Purchase policy" at rc2 and calls requestBind when clicked', async () => {
     const session = baseSession({ funnelStage: 'rc2' });
     mockUseQuoteSession.mockReturnValue(session);
     render(<QuoteClient />);
     fireEvent.click(screen.getByRole('button', { name: 'Purchase policy' }));
     await waitFor(() => expect(session.requestBind).toHaveBeenCalled());
+  });
+
+  it('shows the driving record results at rc2 instead of re-rendering the form', () => {
+    mockUseQuoteSession.mockReturnValue(
+      baseSession({
+        funnelStage: 'rc2',
+        report: {
+          reportType: 'mvr',
+          violations: ['speeding_2024'],
+          pulledAt: '2026-01-01T00:00:00.000Z',
+        },
+      }),
+    );
+    render(<QuoteClient />);
+
+    expect(screen.getByText('Driving record')).toBeInTheDocument();
+    expect(screen.getByText('speeding 2024')).toBeInTheDocument();
+    expect(screen.queryByTestId('config-driven-page')).not.toBeInTheDocument();
+  });
+
+  it('shows a pulling placeholder at rc2 before the report has loaded', () => {
+    mockUseQuoteSession.mockReturnValue(baseSession({ funnelStage: 'rc2' }));
+    render(<QuoteClient />);
+    expect(
+      screen.getByText(/pulling your driving record/i),
+    ).toBeInTheDocument();
+  });
+
+  it('shows a clean-record message at rc2 when there are no violations', () => {
+    mockUseQuoteSession.mockReturnValue(
+      baseSession({
+        funnelStage: 'rc2',
+        report: { reportType: 'mvr', violations: [], pulledAt: 'now' },
+      }),
+    );
+    render(<QuoteClient />);
+
+    expect(screen.getByText(/no violations found/i)).toBeInTheDocument();
   });
 
   it('shows the bind-progress card and polls status once funnelStage is bind', async () => {

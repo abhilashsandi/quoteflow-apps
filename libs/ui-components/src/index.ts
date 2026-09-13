@@ -4,6 +4,7 @@ export * from './atoms/Badge.js';
 export * from './atoms/Button.js';
 export * from './atoms/Checkbox.js';
 export * from './atoms/Input.js';
+export * from './atoms/SsnInput.js';
 export * from './atoms/Label.js';
 export * from './atoms/Select.js';
 

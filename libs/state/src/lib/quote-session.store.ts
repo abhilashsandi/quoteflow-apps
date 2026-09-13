@@ -2,6 +2,7 @@ import type {
   BundleRef,
   CarrierRef,
   FunnelStage,
+  MvrReport,
   QuoteAnswers,
   RatingResult,
   RouteConfig,
@@ -19,6 +20,9 @@ export interface QuoteSessionData {
   bundle: BundleRef | null;
   answers: QuoteAnswers;
   rate: RatingResult | null;
+  /** Set once pullReport() succeeds (rc2) — lets the "Driving Record" step show what was
+   * actually found instead of re-rendering the same driver-info form as "Your Quote". */
+  report: MvrReport | null;
   status: QuoteSessionStatus;
   error: string | null;
 }
@@ -32,6 +36,7 @@ export const INITIAL_QUOTE_SESSION: QuoteSessionData = {
   bundle: null,
   answers: {},
   rate: null,
+  report: null,
   status: 'idle',
   error: null,
 };

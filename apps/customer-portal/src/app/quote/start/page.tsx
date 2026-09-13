@@ -12,6 +12,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  SsnInput,
 } from 'ui-components';
 import { submitGaq } from './actions';
 
@@ -92,13 +93,13 @@ export default async function QuoteStartPage({
                   invalid={field === 'dob'}
                 />
               </FormField>
-              <FormField
-                htmlFor="ssn"
-                label="Social Security Number"
-                required
-                description="000-00-0000"
-              >
-                <Input id="ssn" name="ssn" required invalid={field === 'ssn'} />
+              <FormField htmlFor="ssn" label="Social Security Number" required>
+                <SsnInput
+                  id="ssn"
+                  name="ssn"
+                  required
+                  invalid={field === 'ssn'}
+                />
               </FormField>
               <FormField htmlFor="phone" label="Phone number" required>
                 <Input

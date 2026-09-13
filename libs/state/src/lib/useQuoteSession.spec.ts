@@ -47,6 +47,7 @@ describe('useQuoteSession', () => {
           bundle: { manifestUrl: '/bundles/manifest.json', configKey: 'acme' },
           answers: { 'driver-info': {} },
           rate: null,
+          report: null,
         },
       },
     );
@@ -91,6 +92,7 @@ describe('useQuoteSession', () => {
       bundle: { manifestUrl: '/bundles/manifest.json', configKey: 'acme' },
       answers: { 'driver-info': {} },
       rate: null,
+      report: null,
       status: 'ready',
       error: null,
     });
@@ -117,6 +119,7 @@ describe('useQuoteSession', () => {
       bundle: { manifestUrl: '/bundles/manifest.json', configKey: 'acme' },
       answers: { 'driver-info': { firstName: 'Jane' } },
       rate: null,
+      report: null,
       status: 'ready',
       error: null,
     });
@@ -148,6 +151,49 @@ describe('useQuoteSession', () => {
     });
   });
 
+  it('pullReport applies the returned rate and stores the MVR report for the driving-record step', async () => {
+    useQuoteSessionStore.getState().hydrate({
+      quoteId: 'q1',
+      carrier: { code: 'acme', name: 'Acme' },
+      funnelStage: 'rc1',
+      currentPageKey: 'driver-info',
+      schema: { pages: [] },
+      bundle: { manifestUrl: '/bundles/manifest.json', configKey: 'acme' },
+      answers: {},
+      rate: { premium: 600, currency: 'USD', ratedAt: 'now' },
+      report: null,
+      status: 'ready',
+      error: null,
+    });
+    mockFetchSequence({
+      status: 200,
+      body: {
+        quoteId: 'q1',
+        funnelStage: 'rc2',
+        report: {
+          reportType: 'mvr',
+          violations: ['speeding_2024'],
+          pulledAt: '2026-01-01T00:00:00.000Z',
+        },
+        rate: { premium: 775, currency: 'USD', ratedAt: 'now' },
+      },
+    });
+
+    const { result } = renderHook(() =>
+      useQuoteSession({ bffGatewayBaseUrl: BASE_URL }),
+    );
+    const outcome = await act(() => result.current.pullReport());
+
+    expect(outcome).toEqual({ success: true });
+    expect(result.current.funnelStage).toBe('rc2');
+    expect(result.current.rate?.premium).toBe(775);
+    expect(result.current.report).toEqual({
+      reportType: 'mvr',
+      violations: ['speeding_2024'],
+      pulledAt: '2026-01-01T00:00:00.000Z',
+    });
+  });
+
   it('submitPage is a no-op (no request) when the page has no answers yet', async () => {
     useQuoteSessionStore.getState().hydrate({
       quoteId: 'q1',
@@ -158,6 +204,7 @@ describe('useQuoteSession', () => {
       bundle: { manifestUrl: '/bundles/manifest.json', configKey: 'acme' },
       answers: {},
       rate: null,
+      report: null,
       status: 'ready',
       error: null,
     });
@@ -182,6 +229,7 @@ describe('useQuoteSession', () => {
       bundle: { manifestUrl: '/bundles/manifest.json', configKey: 'acme' },
       answers: { 'driver-info': { ssn: '000-45-6789' } },
       rate: null,
+      report: null,
       status: 'ready',
       error: null,
     });
@@ -212,6 +260,7 @@ describe('useQuoteSession', () => {
       bundle: { manifestUrl: '/bundles/manifest.json', configKey: 'acme' },
       answers: {},
       rate: null,
+      report: null,
       status: 'ready',
       error: null,
     });
@@ -239,6 +288,7 @@ describe('useQuoteSession', () => {
       bundle: { manifestUrl: '/bundles/manifest.json', configKey: 'acme' },
       answers: {},
       rate: null,
+      report: null,
       status: 'ready',
       error: null,
     });
@@ -274,6 +324,7 @@ describe('useQuoteSession', () => {
         bundle: { manifestUrl: '/bundles/manifest.json', configKey: 'acme' },
         answers: { 'driver-info': { firstName: 'Jane' } },
         rate: null,
+        report: null,
         status: 'ready',
         error: null,
       }),

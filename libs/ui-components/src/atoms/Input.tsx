@@ -5,19 +5,22 @@ export type InputProps = React.InputHTMLAttributes<HTMLInputElement> & {
   invalid?: boolean;
 };
 
+/** Shared with SsnInput, which wraps a masked `react-imask` input rather than a plain
+ * `<input>` and so can't use this component directly, but should look identical. */
+export const inputBaseClassName = cn(
+  'flex h-11 w-full min-w-0 rounded-xl border border-input bg-transparent px-4 py-1 text-sm shadow-xs',
+  'transition-colors outline-none placeholder:text-muted-foreground',
+  'focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50',
+  'disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50',
+  'aria-invalid:border-destructive aria-invalid:ring-destructive/20',
+);
+
 export const Input = React.forwardRef<HTMLInputElement, InputProps>(
   ({ className, invalid, ...props }, ref) => (
     <input
       ref={ref}
       aria-invalid={invalid}
-      className={cn(
-        'flex h-11 w-full min-w-0 rounded-xl border border-input bg-transparent px-4 py-1 text-sm shadow-xs',
-        'transition-colors outline-none placeholder:text-muted-foreground',
-        'focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50',
-        'disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50',
-        'aria-invalid:border-destructive aria-invalid:ring-destructive/20',
-        className,
-      )}
+      className={cn(inputBaseClassName, className)}
       {...props}
     />
   ),

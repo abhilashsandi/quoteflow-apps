@@ -1,5 +1,6 @@
 'use client';
 
+import type { PageConfig } from 'api-client';
 import { ConfigDrivenPage } from 'form-renderer';
 import { useCallback, useEffect, useState } from 'react';
 import { useQuoteSession } from 'state';
@@ -26,6 +27,46 @@ interface BindPollState {
   status: string;
   attemptCount: number;
   lastError: string | null;
+}
+
+/** Same last-4-digits masking SsnInput shows while editing an SSN field — used here for a
+ * read-only summary, so the number stays out of view even once it's no longer being typed. */
+function maskSsn(value: string): string {
+  const digits = value.replace(/\D/g, '');
+  return digits.length === 9 ? `•••-••-${digits.slice(5)}` : value;
+}
+
+/**
+ * A read-only recap of what was submitted at the schema stage — shown at rc1 ("Your Quote")
+ * instead of re-rendering the same editable form the user just filled in. Derives its labels
+ * straight from the page config, the same way ConfigDrivenPage does, so it stays correct for
+ * any carrier's field set without carrier-specific code here.
+ */
+function SubmittedAnswersSummary({
+  page,
+  values,
+}: {
+  page: PageConfig;
+  values: Record<string, string>;
+}) {
+  return (
+    <dl className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
+      {page.sections.flatMap((section) =>
+        section.fields.map((field) => {
+          const value = values[field.key];
+          if (!value) return null;
+          return (
+            <div key={field.key}>
+              <dt className="text-muted-foreground text-xs">{field.label}</dt>
+              <dd className="text-sm font-medium">
+                {field.validator === 'ssn' ? maskSsn(value) : value}
+              </dd>
+            </div>
+          );
+        }),
+      )}
+    </dl>
+  );
 }
 
 export interface QuoteClientProps {
@@ -171,6 +212,46 @@ export function QuoteClient({ resumeQuoteId }: QuoteClientProps) {
                     {bindPoll.lastError}
                   </p>
                 ) : null}
+              </CardContent>
+            </Card>
+          ) : session.funnelStage === 'rc1' && currentPage ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>Your quote is ready</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <SubmittedAnswersSummary
+                  page={currentPage}
+                  values={pageValues as Record<string, string>}
+                />
+                <p className="text-muted-foreground mt-4 text-sm">
+                  Continue to pull your driving record and finalize your price.
+                </p>
+              </CardContent>
+            </Card>
+          ) : session.funnelStage === 'rc2' ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>Driving record</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {session.report ? (
+                  session.report.violations.length > 0 ? (
+                    <ul className="list-disc space-y-1 pl-5 text-sm">
+                      {session.report.violations.map((violation) => (
+                        <li key={violation}>{violation.replace(/_/g, ' ')}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-sm">
+                      No violations found — clean driving record.
+                    </p>
+                  )
+                ) : (
+                  <p className="text-muted-foreground text-sm">
+                    Pulling your driving record…
+                  </p>
+                )}
               </CardContent>
             </Card>
           ) : currentPage ? (
