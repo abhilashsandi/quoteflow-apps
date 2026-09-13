@@ -142,12 +142,16 @@ synchronous HTTP calls:
 3. `automation-worker` (this repo), a completely separate process with no HTTP route the
    browser ever calls directly, consumes that message and picks a bind mechanism by the job's
    `carrierCode` (`src/worker/bind-job-handler.ts`'s `API_DRIVEN_CARRIER_CODES`): for Acme, it
-   launches Playwright and drives a mock carrier portal (`src/mock-carrier-portal` — a bare
-   Express app, deliberately not a React SPA, the way automation against a *real* carrier
-   portal would have to log in and fill an HTML form); for Vantage Direct, it makes one
-   authenticated `fetch()` call to a mock carrier REST API (`src/mock-carrier-api` — bearer
-   token, no browser involved at all). Both paths converge on the same `{ policyNumber }`
-   result shape, so everything downstream doesn't care which one ran.
+   first calls quoteflow-rating-service's `GET /internal/quotes/:quoteId` (server-to-server, no
+   CORS — see that repo's README) to get the quote's real driver-info answers, then launches
+   Playwright and drives a mock carrier portal through three real pages — login, an
+   applicant-details form (name + DOB, filled from that lookup), and the bind form itself
+   (`src/mock-carrier-portal` — a bare Express app, deliberately not a React SPA, the way
+   automation against a *real* multi-page carrier portal would have to log in and fill more
+   than one HTML form); for Vantage Direct, it makes one authenticated `fetch()` call to a mock
+   carrier REST API (`src/mock-carrier-api` — bearer token, no browser involved at all). Both
+   paths converge on the same `{ policyNumber }` result shape, so everything downstream doesn't
+   care which one ran.
 4. On success or exhausted retries, the worker calls back `PATCH /internal/carrier-jobs/:jobId`
    on Repo 1 — a server-to-server-only route with no CORS, guarded by a regression test on
    Repo 1's middleware ordering (see that repo's CLAUDE.md).

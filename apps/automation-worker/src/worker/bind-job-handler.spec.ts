@@ -1,5 +1,6 @@
 import { createBindJobHandler } from './bind-job-handler.js';
 import type { RatingServiceCallback } from './rating-service-callback.js';
+import type { RatingServiceQuoteLookup } from './rating-service-quote-lookup.js';
 
 const ACME_JOB = {
   jobId: 'job-1',
@@ -23,13 +24,28 @@ function fakeRatingService(): RatingServiceCallback & {
   return { reportBindProgress: jest.fn().mockResolvedValue(undefined) };
 }
 
-const BASE_DEPS = {
-  mockCarrierPortalUrl: 'http://localhost:4200',
-  headless: true,
-  carrierApiBaseUrl: 'http://localhost:4300',
-  carrierApiKey: 'test-key',
-  simulatedFailureRate: 0,
-};
+const APPLICANT = { firstName: 'Jane', lastName: 'Doe', dob: '1990-01-01' };
+
+function fakeQuoteLookup(): RatingServiceQuoteLookup & {
+  getApplicantDetails: jest.Mock;
+} {
+  return {
+    getApplicantDetails: jest.fn().mockResolvedValue(APPLICANT),
+  };
+}
+
+// A function, not a shared object, so each test gets its own fresh quoteLookup mock rather
+// than accumulating call history across tests (this file has no afterEach mock reset).
+function baseDeps() {
+  return {
+    mockCarrierPortalUrl: 'http://localhost:4200',
+    headless: true,
+    carrierApiBaseUrl: 'http://localhost:4300',
+    carrierApiKey: 'test-key',
+    simulatedFailureRate: 0,
+    quoteLookup: fakeQuoteLookup(),
+  };
+}
 
 describe('createBindJobHandler', () => {
   it('reports running, runs the Playwright automation for acme, and reports succeeded', async () => {
@@ -37,7 +53,7 @@ describe('createBindJobHandler', () => {
     const automate = jest.fn().mockResolvedValue({ policyNumber: 'ACME-123' });
     const callCarrierApi = jest.fn();
     const handle = createBindJobHandler({
-      ...BASE_DEPS,
+      ...baseDeps(),
       ratingService,
       automate,
       callCarrierApi,
@@ -54,7 +70,7 @@ describe('createBindJobHandler', () => {
       },
     );
     expect(automate).toHaveBeenCalledWith(
-      { quoteId: 'quote-1', carrierCode: 'acme' },
+      { quoteId: 'quote-1', carrierCode: 'acme', applicant: APPLICANT },
       { mockCarrierPortalUrl: 'http://localhost:4200', headless: true },
     );
     expect(callCarrierApi).not.toHaveBeenCalled();
@@ -72,7 +88,7 @@ describe('createBindJobHandler', () => {
       .fn()
       .mockResolvedValue({ policyNumber: 'VNTG-456' });
     const handle = createBindJobHandler({
-      ...BASE_DEPS,
+      ...baseDeps(),
       ratingService,
       automate,
       callCarrierApi,
@@ -96,7 +112,7 @@ describe('createBindJobHandler', () => {
     const ratingService = fakeRatingService();
     const automate = jest.fn().mockRejectedValue(new Error('carrier down'));
     const handle = createBindJobHandler({
-      ...BASE_DEPS,
+      ...baseDeps(),
       ratingService,
       automate,
     });
@@ -116,7 +132,7 @@ describe('createBindJobHandler', () => {
     const ratingService = fakeRatingService();
     const automate = jest.fn().mockRejectedValue(new Error('carrier down'));
     const handle = createBindJobHandler({
-      ...BASE_DEPS,
+      ...baseDeps(),
       ratingService,
       automate,
     });
@@ -141,7 +157,7 @@ describe('createBindJobHandler', () => {
       .fn()
       .mockRejectedValue(new Error('carrier API down'));
     const handle = createBindJobHandler({
-      ...BASE_DEPS,
+      ...baseDeps(),
       ratingService,
       callCarrierApi,
     });
@@ -164,7 +180,7 @@ describe('createBindJobHandler', () => {
     const ratingService = fakeRatingService();
     const automate = jest.fn().mockResolvedValue({ policyNumber: 'ACME-123' });
     const handle = createBindJobHandler({
-      ...BASE_DEPS,
+      ...baseDeps(),
       ratingService,
       automate,
       simulatedFailureRate: 1,

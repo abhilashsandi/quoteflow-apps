@@ -3,6 +3,10 @@ import { chromium } from 'playwright';
 export interface CarrierBindPayload {
   quoteId: string;
   carrierCode: string;
+  /** Filled into the mock portal's applicant-details page — a real carrier automation would
+   * need the same real applicant data, not just a quoteId. See bind-job-handler.ts, which
+   * fetches this from quoteflow-rating-service before calling this function. */
+  applicant: { firstName: string; lastName: string; dob: string };
 }
 
 export interface CarrierBindResult {
@@ -35,6 +39,12 @@ export async function runCarrierBindAutomation(
     await page.fill('#username', 'automation-worker');
     await page.fill('#password', 'automation-worker-password');
     await page.click('#login-submit');
+    await page.waitForURL('**/applicant-details');
+
+    await page.fill('#firstName', payload.applicant.firstName);
+    await page.fill('#lastName', payload.applicant.lastName);
+    await page.fill('#dob', payload.applicant.dob);
+    await page.click('#applicant-details-submit');
     await page.waitForURL('**/bind-form');
 
     await page.fill('#quoteId', payload.quoteId);

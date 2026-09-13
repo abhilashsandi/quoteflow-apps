@@ -1,6 +1,16 @@
+import { randomUUID } from 'node:crypto';
 import express, { type Express, type Request } from 'express';
 
 const SESSION_COOKIE = 'acme_carrier_session';
+
+interface CarrierSession {
+  applicant?: { firstName: string; lastName: string; dob: string };
+}
+
+/** In-memory, per-process session store — fine for a dev/demo Express app that's never
+ * horizontally scaled. Keyed by a random session id issued at login, not the boolean cookie
+ * this portal used before it needed to remember anything across pages. */
+const sessions = new Map<string, CarrierSession>();
 
 function page(title: string, body: string): string {
   return `<!doctype html>
@@ -21,8 +31,16 @@ function page(title: string, body: string): string {
 </html>`;
 }
 
-function hasSession(req: Request): boolean {
-  return (req.headers.cookie ?? '').includes(`${SESSION_COOKIE}=1`);
+function getSessionId(req: Request): string | undefined {
+  const match = /(?:^|;\s*)acme_carrier_session=([^;]+)/.exec(
+    req.headers.cookie ?? '',
+  );
+  return match?.[1];
+}
+
+function getSession(req: Request): CarrierSession | undefined {
+  const id = getSessionId(req);
+  return id ? sessions.get(id) : undefined;
 }
 
 export interface MockCarrierPortalOptions {
@@ -82,13 +100,75 @@ export function createMockCarrierPortalApp(
         );
       return;
     }
-    res.setHeader('Set-Cookie', `${SESSION_COOKIE}=1; Path=/; HttpOnly`);
+    const sessionId = randomUUID();
+    sessions.set(sessionId, {});
+    res.setHeader(
+      'Set-Cookie',
+      `${SESSION_COOKIE}=${sessionId}; Path=/; HttpOnly`,
+    );
+    res.redirect(303, '/applicant-details');
+  });
+
+  app.get('/applicant-details', (req, res) => {
+    const session = getSession(req);
+    if (!session) {
+      res.redirect(303, '/login');
+      return;
+    }
+    res.send(
+      page(
+        'Acme Carrier Portal — Applicant Details',
+        `
+      <h1>Applicant Details</h1>
+      <form method="post" action="/applicant-details" id="applicant-details-form">
+        <label for="firstName">First name</label>
+        <input id="firstName" name="firstName" required />
+        <label for="lastName">Last name</label>
+        <input id="lastName" name="lastName" required />
+        <label for="dob">Date of birth</label>
+        <input id="dob" name="dob" type="date" required />
+        <button id="applicant-details-submit" type="submit">Continue</button>
+      </form>
+    `,
+      ),
+    );
+  });
+
+  app.post('/applicant-details', (req, res) => {
+    const sessionId = getSessionId(req);
+    const session = sessionId ? sessions.get(sessionId) : undefined;
+    if (!sessionId || !session) {
+      res.redirect(303, '/login');
+      return;
+    }
+    const { firstName, lastName, dob } = req.body as {
+      firstName?: string;
+      lastName?: string;
+      dob?: string;
+    };
+    if (!firstName || !lastName || !dob) {
+      res
+        .status(400)
+        .send(
+          page(
+            'Applicant details failed',
+            '<div id="error">First name, last name, and date of birth are required</div>',
+          ),
+        );
+      return;
+    }
+    sessions.set(sessionId, { applicant: { firstName, lastName, dob } });
     res.redirect(303, '/bind-form');
   });
 
   app.get('/bind-form', (req, res) => {
-    if (!hasSession(req)) {
+    const session = getSession(req);
+    if (!session) {
       res.redirect(303, '/login');
+      return;
+    }
+    if (!session.applicant) {
+      res.redirect(303, '/applicant-details');
       return;
     }
     res.send(
@@ -96,6 +176,7 @@ export function createMockCarrierPortalApp(
         'Acme Carrier Portal — Bind Policy',
         `
       <h1>Bind a Policy</h1>
+      <p>Applicant: ${session.applicant.firstName} ${session.applicant.lastName}</p>
       <form method="post" action="/bind-form" id="bind-form">
         <label for="quoteId">Quote ID</label>
         <input id="quoteId" name="quoteId" required />
@@ -107,8 +188,13 @@ export function createMockCarrierPortalApp(
   });
 
   app.post('/bind-form', async (req, res) => {
-    if (!hasSession(req)) {
+    const session = getSession(req);
+    if (!session) {
       res.redirect(303, '/login');
+      return;
+    }
+    if (!session.applicant) {
+      res.redirect(303, '/applicant-details');
       return;
     }
     const { quoteId } = req.body as { quoteId?: string };
@@ -138,7 +224,13 @@ export function createMockCarrierPortalApp(
     }
 
     const policyNumber = `ACME-${quoteId.slice(0, 8).toUpperCase()}-${Date.now().toString(36).toUpperCase()}`;
-    res.send(page('Policy bound', `<div id="result">${policyNumber}</div>`));
+    res.send(
+      page(
+        'Policy bound',
+        `<p>Policy bound for ${session.applicant.firstName} ${session.applicant.lastName}</p>
+      <div id="result">${policyNumber}</div>`,
+      ),
+    );
   });
 
   return app;

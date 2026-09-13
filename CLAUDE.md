@@ -38,9 +38,14 @@ rules an agent working in this repo needs before making a change.
 - `apps/automation-worker` — the RabbitMQ consumer for `carrier.bind.requested`. Two bind
   mechanisms live here side by side, picked per job by `src/worker/bind-job-handler.ts`'s
   `API_DRIVEN_CARRIER_CODES` set (keyed off the job's `carrierCode`): Acme drives
-  `src/mock-carrier-portal` (a bare Express app, deliberately not a React SPA) with Playwright;
-  Vantage calls `src/mock-carrier-api` (a bare Express JSON API, bearer-token auth) directly
-  with `fetch()`. Adding a third carrier's bind mechanism means adding its own
+  `src/mock-carrier-portal` (a bare Express app, deliberately not a React SPA, with a real
+  three-page flow — login, an applicant-details form, then the bind form — each gated on the
+  previous one being completed via an in-memory session Map) with Playwright; Vantage calls
+  `src/mock-carrier-api` (a bare Express JSON API, bearer-token auth) directly with `fetch()`.
+  The applicant-details page needs real driver-info answers, not just a quoteId —
+  `bind-job-handler.ts` fetches those from Repo 1's `GET /internal/quotes/:quoteId` via
+  `src/worker/rating-service-quote-lookup.ts` before calling the Playwright automation (never
+  needed for the API-driven path). Adding a third carrier's bind mechanism means adding its own
   `runX(...)`-shaped function plus a branch (or a set entry) in that handler — everything else
   (retry reporting, the DLQ decision) is shared regardless of which mechanism runs.
   `src/cli/dlq-cli.ts` is the DLQ inspect/replay tool. The queue/DLQ topology here must match

@@ -3,6 +3,7 @@ import { logger } from '../logger.js';
 import { createBindJobHandler } from './bind-job-handler.js';
 import { createRabbitMQClient } from './rabbitmq-client.js';
 import { createRatingServiceCallback } from './rating-service-callback.js';
+import { createRatingServiceQuoteLookup } from './rating-service-quote-lookup.js';
 
 async function main(): Promise<void> {
   const rabbitMQ = createRabbitMQClient({
@@ -10,12 +11,14 @@ async function main(): Promise<void> {
     maxRetries: env.MAX_RETRIES,
   });
   const ratingService = createRatingServiceCallback(env.RATING_SERVICE_URL);
+  const quoteLookup = createRatingServiceQuoteLookup(env.RATING_SERVICE_URL);
 
   await rabbitMQ.connect();
   logger.info('Connected to RabbitMQ, consuming carrier.bind.requested');
 
   const handleBindJob = createBindJobHandler({
     ratingService,
+    quoteLookup,
     mockCarrierPortalUrl: env.MOCK_CARRIER_PORTAL_URL,
     headless: env.BROWSER_HEADLESS,
     carrierApiBaseUrl: env.MOCK_CARRIER_API_URL,

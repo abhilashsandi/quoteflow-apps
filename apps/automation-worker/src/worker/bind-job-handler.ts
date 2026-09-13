@@ -2,6 +2,7 @@ import { logger } from '../logger.js';
 import { runCarrierApiBind } from './carrier-api-automation.js';
 import { runCarrierBindAutomation } from './carrier-bind-automation.js';
 import type { RatingServiceCallback } from './rating-service-callback.js';
+import type { RatingServiceQuoteLookup } from './rating-service-quote-lookup.js';
 
 export interface BindRequestedMessage {
   jobId: string;
@@ -17,6 +18,9 @@ const API_DRIVEN_CARRIER_CODES = new Set(['vantage']);
 
 export interface BindJobHandlerDeps {
   ratingService: RatingServiceCallback;
+  /** Only needed for the Playwright path — it's what supplies real applicant data to the mock
+   * portal's applicant-details page. */
+  quoteLookup: RatingServiceQuoteLookup;
   mockCarrierPortalUrl: string;
   headless: boolean;
   carrierApiBaseUrl: string;
@@ -75,7 +79,13 @@ export function createBindJobHandler(deps: BindJobHandlerDeps) {
             { apiBaseUrl: deps.carrierApiBaseUrl, apiKey: deps.carrierApiKey },
           )
         : await automate(
-            { quoteId: job.quoteId, carrierCode: job.carrierCode },
+            {
+              quoteId: job.quoteId,
+              carrierCode: job.carrierCode,
+              applicant: await deps.quoteLookup.getApplicantDetails(
+                job.quoteId,
+              ),
+            },
             {
               mockCarrierPortalUrl: deps.mockCarrierPortalUrl,
               headless: deps.headless,
