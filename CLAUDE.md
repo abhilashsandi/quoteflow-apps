@@ -1,9 +1,9 @@
 # quoteflow-apps
 
-Frontend/orchestration monorepo for QuoteFlow (fictional carrier: Acme Insurance). Portfolio
-sample — see the root [README.md](./README.md) for the full architecture, an
-architecture diagram, and setup instructions. This file is the fast-context version: the rules
-an agent working in this repo needs before making a change.
+Frontend/orchestration monorepo for QuoteFlow (fictional carriers: Acme Insurance and Vantage
+Direct). Portfolio sample — see the root [README.md](./README.md) for the full architecture,
+an architecture diagram, and setup instructions. This file is the fast-context version: the
+rules an agent working in this repo needs before making a change.
 
 ## The two rules everything else depends on
 
@@ -28,12 +28,17 @@ an agent working in this repo needs before making a change.
   flags, `src/assistant` runs the Gemini + RAG assistant. `src/telemetry/otel.ts` must stay the
   first import in `main.ts` (see docs/adr/0002 — auto-instrumentation patches modules at
   `require()` time).
-- `apps/automation-worker` — the RabbitMQ consumer for `carrier.bind.requested`. `src/worker`
-  is the consumer + Playwright driver; `src/mock-carrier-portal` is a bare Express app
-  (deliberately not a React SPA) that the worker drives, standing in for a real carrier's
-  portal; `src/cli/dlq-cli.ts` is the DLQ inspect/replay tool. The queue/DLQ topology here must
-  match Repo 1's producer exactly (same exchange/queue names and arguments) — RabbitMQ rejects
-  a mismatched re-declaration, so changing one side means changing both.
+- `apps/automation-worker` — the RabbitMQ consumer for `carrier.bind.requested`. Two bind
+  mechanisms live here side by side, picked per job by `src/worker/bind-job-handler.ts`'s
+  `API_DRIVEN_CARRIER_CODES` set (keyed off the job's `carrierCode`): Acme drives
+  `src/mock-carrier-portal` (a bare Express app, deliberately not a React SPA) with Playwright;
+  Vantage calls `src/mock-carrier-api` (a bare Express JSON API, bearer-token auth) directly
+  with `fetch()`. Adding a third carrier's bind mechanism means adding its own
+  `runX(...)`-shaped function plus a branch (or a set entry) in that handler — everything else
+  (retry reporting, the DLQ decision) is shared regardless of which mechanism runs.
+  `src/cli/dlq-cli.ts` is the DLQ inspect/replay tool. The queue/DLQ topology here must match
+  Repo 1's producer exactly (same exchange/queue names and arguments) — RabbitMQ rejects a
+  mismatched re-declaration, so changing one side means changing both.
 - `libs/state` — `useQuoteSession` and `useChatStream` are both Zustand-backed (module-level
   store, not `useState`), specifically so a long-running async function (streaming SSE,
   building history) can read the latest state via `.getState()` instead of a stale closure. If

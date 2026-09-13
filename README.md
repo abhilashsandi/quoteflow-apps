@@ -1,10 +1,11 @@
 # quoteflow-apps
 
 The frontend/orchestration monorepo for **QuoteFlow** — a portfolio-quality sample built around
-a fictional carrier, **Acme Insurance**. This repo owns no quote data of its own: it renders
-the customer- and agent-facing auto insurance quote flow, and every quote read/write is
-proxied over HTTP to a separate service, [`quoteflow-rating-service`](../quoteflow-rating-service)
-(Repo 1) — never a shared database connection.
+two fictional carriers, **Acme Insurance** and **Vantage Direct**. This repo owns no quote
+data of its own: it renders the customer- and agent-facing auto insurance quote flow, and
+every quote read/write is proxied over HTTP to a separate service,
+[`quoteflow-rating-service`](../quoteflow-rating-service) (Repo 1) — never a shared database
+connection.
 
 > Status: complete (all 12 build milestones) — both portals, the BFF, an
 > RabbitMQ-consuming automation worker, six shared libs, a Gemini-powered assistant with RAG +
@@ -22,10 +23,12 @@ proxied over HTTP to a separate service, [`quoteflow-rating-service`](../quotefl
    Repo 1's config resolver, which changes field visibility (e.g. agents don't see the
    customer's phone field) without a single line of portal-specific page code. See
    [Milestone 7](#milestones) below.
-3. **An async hand-off across the process boundary via RabbitMQ**, not a synchronous call:
-   binding a policy means Repo 1 publishes a job and returns immediately; a worker in *this*
-   repo consumes it, drives a mock carrier portal with Playwright, and reports progress back
-   over a second, server-to-server-only HTTP call. See [The RabbitMQ hand-off](#the-rabbitmq-hand-off-bind-flow).
+3. **An async hand-off across the process boundary via RabbitMQ**, not a synchronous call, to
+   *two different bind mechanisms picked per carrier*: binding a policy means Repo 1 publishes
+   a job and returns immediately; a worker in *this* repo consumes it and either drives a mock
+   carrier portal with Playwright (Acme — no API to call instead) or calls a mock carrier REST
+   API directly (Vantage Direct), then reports progress back over a second,
+   server-to-server-only HTTP call. See [The RabbitMQ hand-off](#the-rabbitmq-hand-off-bind-flow).
 4. **A RAG + tool-calling assistant that's actually grounded**, not just prompt-stuffed: a
    dedicated pgvector store for coverage-explainer docs, real cosine-similarity retrieval, and
    a live Gemini function call that reads the customer's own in-progress quote.
@@ -46,9 +49,11 @@ flowchart TB
     end
 
     subgraph worker["automation-worker"]
-        WK["RabbitMQ consumer"]
+        WK["RabbitMQ consumer<br/>(picks by carrierCode)"]
         MC["Mock Acme carrier portal :4200"]
-        WK -- "Playwright" --> MC
+        MA["Mock Vantage Direct API :4300"]
+        WK -- "Playwright (acme)" --> MC
+        WK -- "fetch() + bearer token<br/>(vantage)" --> MA
     end
 
     R1["quoteflow-rating-service :4000<br/>(Postgres · Redis · RabbitMQ)"]
@@ -75,7 +80,7 @@ flowchart TB
 | `customer-portal` | `:3000` | Next.js App Router. SSR for the pre-quote landing page, CSR once a `quoteId` exists (sessionStorage-backed). Floating assistant chat widget on `/quote`. |
 | `agent-portal` | `:3001` | Same libs, same `/quote` page shape as customer-portal — the only difference is `portal: 'agent'` passed to `useCarrierRouteConfig()`, which applies Repo 1's agent override chain (currently: hides the phone field). |
 | `bff-gateway` | `:4100` | NestJS. The only thing either portal talks to for quotes/flags/the assistant. Proxies quote reads/writes to Repo 1, evaluates feature flags from a local JSON file, and runs the Gemini-powered assistant. |
-| `automation-worker` | n/a (worker) + `:4200` (mock portal) | Consumes `carrier.bind.requested` from RabbitMQ, drives a bare Express + server-rendered "Acme carrier portal" via Playwright, retries with backoff, dead-letters after N attempts, reports progress back to Repo 1. Ships a `dlq` CLI (`depth`/`list`/`replay`/`purge`). |
+| `automation-worker` | n/a (worker) + `:4200`/`:4300` (mocks) | Consumes `carrier.bind.requested` from RabbitMQ and binds via one of two mechanisms picked per job's `carrierCode`: Acme drives a bare Express + server-rendered "carrier portal" via Playwright (`:4200`); Vantage Direct calls a bare Express JSON API directly (`:4300`, bearer-token auth). Either way: retries with backoff, dead-letters after N attempts, reports progress back to Repo 1. Ships a `dlq` CLI (`depth`/`list`/`replay`/`purge`). |
 
 ## Libs
 
@@ -119,7 +124,7 @@ cp apps/automation-worker/.env.example apps/automation-worker/.env
 npm run dev:customer-portal    # :3000
 npm run dev:agent-portal       # :3001
 npm run dev:bff-gateway        # :4100
-npm run dev:automation-worker  # RabbitMQ consumer + mock carrier portal on :4200
+npm run dev:automation-worker  # RabbitMQ consumer + mock Acme portal (:4200) + mock Vantage API (:4300)
 npm run storybook              # :4400, ui-components' component catalog
 ```
 
@@ -135,10 +140,14 @@ synchronous HTTP calls:
 2. Repo 1 creates a `carrier_jobs` row, publishes `carrier.bind.requested` to RabbitMQ, and
    returns **immediately** (`202 Accepted`) — it does not wait for the bind to finish.
 3. `automation-worker` (this repo), a completely separate process with no HTTP route the
-   browser ever calls directly, consumes that message, launches Playwright, and drives the
-   mock Acme carrier portal (`apps/automation-worker/src/mock-carrier-portal` — a bare Express
-   app, deliberately not a React SPA, the way automation against a *real* carrier portal would
-   have to log in and fill an HTML form).
+   browser ever calls directly, consumes that message and picks a bind mechanism by the job's
+   `carrierCode` (`src/worker/bind-job-handler.ts`'s `API_DRIVEN_CARRIER_CODES`): for Acme, it
+   launches Playwright and drives a mock carrier portal (`src/mock-carrier-portal` — a bare
+   Express app, deliberately not a React SPA, the way automation against a *real* carrier
+   portal would have to log in and fill an HTML form); for Vantage Direct, it makes one
+   authenticated `fetch()` call to a mock carrier REST API (`src/mock-carrier-api` — bearer
+   token, no browser involved at all). Both paths converge on the same `{ policyNumber }`
+   result shape, so everything downstream doesn't care which one ran.
 4. On success or exhausted retries, the worker calls back `PATCH /internal/carrier-jobs/:jobId`
    on Repo 1 — a server-to-server-only route with no CORS, guarded by a regression test on
    Repo 1's middleware ordering (see that repo's CLAUDE.md).
@@ -151,6 +160,13 @@ either service can boot first without a `PRECONDITION_FAILED` error. A failed bi
 with exponential backoff (1s/2s/4s.../10s cap) before landing in the DLQ; `npm run dlq --prefix
 apps/automation-worker -- list` inspects it non-destructively, `-- replay <n>` puts jobs back on
 the main queue with a reset retry count.
+
+**Scope note:** `customer-portal`/`agent-portal` currently only ever call `POST /quotes` with
+`carrierCode: 'acme'` (see `lib/config.ts`'s `CARRIER_CODE`) — there's no carrier picker UI.
+Vantage Direct's whole quote → bind lifecycle is real and fully wired (verified live via direct
+API calls against Repo 1 and this repo's worker), it's just not reachable by clicking through
+either portal yet. Adding a picker is a small, self-contained UI change; the backend and worker
+need nothing further.
 
 ## Scripts
 
