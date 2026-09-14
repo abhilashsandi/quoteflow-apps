@@ -1,4 +1,5 @@
 import type { FieldComponent } from './field-renderer.types.js';
+import { CheckboxField } from './fields/CheckboxField.js';
 import { SelectField } from './fields/SelectField.js';
 import { TextField } from './fields/TextField.js';
 
@@ -13,6 +14,7 @@ export const fieldComponentRegistry: Record<string, FieldComponent> = {
   text: TextField,
   date: TextField,
   select: SelectField,
+  checkbox: CheckboxField,
 };
 
 export function resolveFieldComponent(type: string): FieldComponent {

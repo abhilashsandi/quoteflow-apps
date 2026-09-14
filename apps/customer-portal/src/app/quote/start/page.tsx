@@ -5,8 +5,10 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  Checkbox,
   FormField,
   Input,
+  Label,
   Select,
   SelectContent,
   SelectItem,
@@ -128,6 +130,10 @@ export default async function QuoteStartPage({
                   </SelectContent>
                 </Select>
               </FormField>
+              <div className="flex items-center gap-2">
+                <Checkbox id="isMarried" name="isMarried" value="true" />
+                <Label htmlFor="isMarried">Is married</Label>
+              </div>
             </CardContent>
           </Card>
 

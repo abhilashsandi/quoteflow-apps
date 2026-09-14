@@ -1,6 +1,5 @@
 'use client';
 
-import type { PageConfig } from 'api-client';
 import { ConfigDrivenPage } from 'form-renderer';
 import { useCallback, useEffect, useState } from 'react';
 import { useQuoteSession } from 'state';
@@ -29,46 +28,6 @@ interface BindPollState {
   lastError: string | null;
 }
 
-/** Same last-4-digits masking SsnInput shows while editing an SSN field — used here for a
- * read-only summary, so the number stays out of view even once it's no longer being typed. */
-function maskSsn(value: string): string {
-  const digits = value.replace(/\D/g, '');
-  return digits.length === 9 ? `•••-••-${digits.slice(5)}` : value;
-}
-
-/**
- * A read-only recap of what was submitted at the schema stage — shown at rc1 ("Your Quote")
- * instead of re-rendering the same editable form the user just filled in. Derives its labels
- * straight from the page config, the same way ConfigDrivenPage does, so it stays correct for
- * any carrier's field set without carrier-specific code here.
- */
-function SubmittedAnswersSummary({
-  page,
-  values,
-}: {
-  page: PageConfig;
-  values: Record<string, string>;
-}) {
-  return (
-    <dl className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
-      {page.sections.flatMap((section) =>
-        section.fields.map((field) => {
-          const value = values[field.key];
-          if (!value) return null;
-          return (
-            <div key={field.key}>
-              <dt className="text-muted-foreground text-xs">{field.label}</dt>
-              <dd className="text-sm font-medium">
-                {field.validator === 'ssn' ? maskSsn(value) : value}
-              </dd>
-            </div>
-          );
-        }),
-      )}
-    </dl>
-  );
-}
-
 export interface QuoteClientProps {
   /** Set when arriving from the GaQ compare page (`/quote/compare`) — resumes that carrier's
    * already-rated quote instead of starting a fresh Acme one. See useQuoteSession's
@@ -89,12 +48,20 @@ export function QuoteClient({ resumeQuoteId }: QuoteClientProps) {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [actionPending, setActionPending] = useState(false);
   const [bindPoll, setBindPoll] = useState<BindPollState | null>(null);
+  /** Set by clicking a completed sidebar step — lets the user look at (and edit) an earlier
+   * step without actually moving the quote backwards. Cleared whenever the real funnelStage
+   * changes, so a genuine advance always snaps the view back to the live step. */
+  const [viewStepKey, setViewStepKey] = useState<string | null>(null);
 
   useEffect(() => {
     if (!resumeQuoteId && session.status === 'idle') {
       void session.startQuote(CARRIER_CODE);
     }
   }, [resumeQuoteId, session.status]);
+
+  useEffect(() => {
+    setViewStepKey(null);
+  }, [session.funnelStage]);
 
   useEffect(() => {
     if (session.funnelStage !== 'bind') return;
@@ -148,6 +115,39 @@ export function QuoteClient({ resumeQuoteId }: QuoteClientProps) {
     }
   }, [currentPage, session.funnelStage]);
 
+  /** Re-patches the current page's answers without advancing the funnel — applyAnswerPatch on
+   * quoteflow-rating-service's side already re-rates and stays at whatever stage the quote is
+   * really at, so this is safe to call from a step the user is only reviewing, not just the
+   * live one. Only snaps the view back to the live step on success, so a validation error
+   * leaves the form open to fix.
+   *
+   * If the quote had already reached rc2, that patch's own rate is missing the MVR violation
+   * surcharge — applyAnswerPatch only ever rates off the answers, not the report pulled
+   * earlier — so this re-pulls the report too, to keep the displayed price consistent with the
+   * violations still shown on the Driving Record step. */
+  const handleUpdateAnswers = useCallback(async () => {
+    if (!currentPage) return;
+    setActionPending(true);
+    setFieldErrors({});
+    try {
+      const result = await session.submitPage(currentPage.key);
+      if (!result.success && result.error) {
+        const details = result.error.details as
+          { fieldKey?: string; message?: string } | undefined;
+        if (details?.fieldKey) {
+          setFieldErrors({
+            [details.fieldKey]: details.message ?? result.error.code,
+          });
+        }
+      } else {
+        if (session.funnelStage === 'rc2') await session.pullReport();
+        setViewStepKey(null);
+      }
+    } finally {
+      setActionPending(false);
+    }
+  }, [currentPage, session.funnelStage]);
+
   if (session.status === 'idle' || session.status === 'loading') {
     return (
       <AppShell brand="QuoteFlow" gradient>
@@ -171,6 +171,15 @@ export function QuoteClient({ resumeQuoteId }: QuoteClientProps) {
     0,
     FUNNEL_ORDER.indexOf(currentStepKey as (typeof FUNNEL_ORDER)[number]),
   );
+  // Which step's content to show — normally the live one, but a completed step stays visible
+  // (and editable, for schema/rc1) after clicking it in the sidebar, until the user saves or
+  // backs out. session.report is unaffected by which step is being viewed since it's stored
+  // once pulled, not derived from the current stage.
+  const displayedStepKey = viewStepKey ?? currentStepKey;
+  const isViewingPastStep =
+    viewStepKey !== null && viewStepKey !== currentStepKey;
+  const isEditableStep =
+    displayedStepKey === 'schema' || displayedStepKey === 'rc1';
 
   return (
     <AppShell
@@ -181,12 +190,17 @@ export function QuoteClient({ resumeQuoteId }: QuoteClientProps) {
           groups={SIDEBAR_STEP_GROUPS}
           currentStepKey={currentStepKey}
           completedStepKeys={completedStepKeys}
+          // Locked once bind has started — a quote that's already being bound shouldn't be
+          // editable, even to just look back at an earlier step.
+          onStepClick={
+            session.funnelStage === 'bind' ? undefined : setViewStepKey
+          }
         />
       }
     >
       <div className="grid gap-8 lg:grid-cols-[2fr_1fr]">
         <div>
-          {session.funnelStage === 'bind' ? (
+          {displayedStepKey === 'bind' ? (
             <Card>
               <CardHeader>
                 <CardTitle>Finalizing your policy…</CardTitle>
@@ -214,22 +228,7 @@ export function QuoteClient({ resumeQuoteId }: QuoteClientProps) {
                 ) : null}
               </CardContent>
             </Card>
-          ) : session.funnelStage === 'rc1' && currentPage ? (
-            <Card>
-              <CardHeader>
-                <CardTitle>Your quote is ready</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <SubmittedAnswersSummary
-                  page={currentPage}
-                  values={pageValues as Record<string, string>}
-                />
-                <p className="text-muted-foreground mt-4 text-sm">
-                  Continue to pull your driving record and finalize your price.
-                </p>
-              </CardContent>
-            </Card>
-          ) : session.funnelStage === 'rc2' ? (
+          ) : displayedStepKey === 'rc2' ? (
             <Card>
               <CardHeader>
                 <CardTitle>Driving record</CardTitle>
@@ -256,6 +255,12 @@ export function QuoteClient({ resumeQuoteId }: QuoteClientProps) {
             </Card>
           ) : currentPage ? (
             <Card className="p-6">
+              {isViewingPastStep ? (
+                <p className="text-muted-foreground mb-4 text-sm">
+                  Reviewing what you submitted — make changes and click
+                  &ldquo;Update quote&rdquo;, or go back without changes.
+                </p>
+              ) : null}
               <ConfigDrivenPage
                 config={currentPage}
                 values={pageValues as Record<string, string>}
@@ -287,7 +292,25 @@ export function QuoteClient({ resumeQuoteId }: QuoteClientProps) {
                 Fill in your info to see a price.
               </p>
             )}
-            {session.funnelStage !== 'bind' ? (
+            {isViewingPastStep ? (
+              <div className="flex flex-col gap-2">
+                {isEditableStep ? (
+                  <Button
+                    onClick={() => void handleUpdateAnswers()}
+                    disabled={actionPending}
+                  >
+                    Update quote
+                  </Button>
+                ) : null}
+                <Button
+                  variant="outline"
+                  onClick={() => setViewStepKey(null)}
+                  disabled={actionPending}
+                >
+                  Back to current step
+                </Button>
+              </div>
+            ) : session.funnelStage !== 'bind' ? (
               <Button
                 onClick={() => void handleContinue()}
                 disabled={actionPending}

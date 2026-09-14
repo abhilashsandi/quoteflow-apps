@@ -10,7 +10,7 @@ export type CarrierJobStatus =
 export interface FieldConfig {
   key: string;
   label: string;
-  type: 'text' | 'select' | 'date';
+  type: 'text' | 'select' | 'date' | 'checkbox';
   required?: boolean;
   validator?: string;
   options?: { label: string; value: string }[];

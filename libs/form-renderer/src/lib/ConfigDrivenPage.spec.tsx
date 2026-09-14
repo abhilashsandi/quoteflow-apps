@@ -32,6 +32,7 @@ const pageConfig: PageConfig = {
             { label: 'Married', value: 'married' },
           ],
         },
+        { key: 'isMarried', label: 'Is married', type: 'checkbox' },
       ],
     },
   ],
@@ -82,6 +83,30 @@ describe('ConfigDrivenPage', () => {
       />,
     );
     expect(screen.getByText('First name is required')).toBeInTheDocument();
+  });
+
+  it('renders a checkbox field and calls onFieldChange with a boolean-shaped string on toggle', () => {
+    const onFieldChange = jest.fn();
+    render(
+      <ConfigDrivenPage
+        config={pageConfig}
+        values={{}}
+        onFieldChange={onFieldChange}
+      />,
+    );
+    fireEvent.click(screen.getByRole('checkbox', { name: /Is married/i }));
+    expect(onFieldChange).toHaveBeenCalledWith('isMarried', 'true');
+  });
+
+  it('renders a checked checkbox when the value is the string "true"', () => {
+    render(
+      <ConfigDrivenPage
+        config={pageConfig}
+        values={{ isMarried: 'true' }}
+        onFieldChange={() => undefined}
+      />,
+    );
+    expect(screen.getByRole('checkbox', { name: /Is married/i })).toBeChecked();
   });
 
   it('renders a select field with its configured options', () => {

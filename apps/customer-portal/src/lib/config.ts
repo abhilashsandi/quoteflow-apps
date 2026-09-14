@@ -31,6 +31,7 @@ export const GAQ_DRIVER_FIELDS = [
   'ssn',
   'phone',
   'maritalStatus',
+  'isMarried',
 ] as const;
 export const GAQ_VEHICLE_FIELDS = ['vin', 'make', 'model', 'year'] as const;
 

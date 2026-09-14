@@ -154,7 +154,7 @@ describe('QuoteClient', () => {
     expect(session.submitPage).not.toHaveBeenCalled();
   });
 
-  it('shows a read-only summary of the submitted answers at rc1, not the same editable form', () => {
+  it('shows the same editable config-driven page at rc1 as at schema, not a read-only view', () => {
     mockUseQuoteSession.mockReturnValue(
       baseSession({
         funnelStage: 'rc1',
@@ -166,12 +166,10 @@ describe('QuoteClient', () => {
     );
     render(<QuoteClient />);
 
-    expect(screen.getByText('Your quote is ready')).toBeInTheDocument();
-    expect(screen.getByText('Jane')).toBeInTheDocument();
-    // The SSN is masked in the summary, never shown in full.
-    expect(screen.getByText('•••-••-6789')).toBeInTheDocument();
-    expect(screen.queryByText('123-45-6789')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('config-driven-page')).not.toBeInTheDocument();
+    expect(screen.getByTestId('config-driven-page')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Continue' }),
+    ).toBeInTheDocument();
   });
 
   it('shows "Purchase policy" at rc2 and calls requestBind when clicked', async () => {
@@ -218,6 +216,125 @@ describe('QuoteClient', () => {
     render(<QuoteClient />);
 
     expect(screen.getByText(/no violations found/i)).toBeInTheDocument();
+  });
+
+  it('clicking a completed sidebar step shows and edits it without changing the real stage', async () => {
+    const session = baseSession({
+      funnelStage: 'rc2',
+      report: { reportType: 'mvr', violations: [], pulledAt: 'now' },
+    });
+    mockUseQuoteSession.mockReturnValue(session);
+    render(<QuoteClient />);
+
+    expect(screen.getByText('Driving record')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Your Quote' }));
+
+    expect(screen.getByTestId('config-driven-page')).toBeInTheDocument();
+    expect(screen.queryByText('Driving record')).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Update quote' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Back to current step' }),
+    ).toBeInTheDocument();
+    // The live-stage action is gone while reviewing a past step.
+    expect(
+      screen.queryByRole('button', { name: 'Purchase policy' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('"Update quote" re-submits the current page and snaps back to the live step on success', async () => {
+    const session = baseSession({ funnelStage: 'rc2' });
+    mockUseQuoteSession.mockReturnValue(session);
+    render(<QuoteClient />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Your Quote' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Update quote' }));
+
+    await waitFor(() =>
+      expect(session.submitPage).toHaveBeenCalledWith('driver-info'),
+    );
+    await waitFor(() =>
+      expect(screen.getByText('Driving record')).toBeInTheDocument(),
+    );
+  });
+
+  it('"Update quote" re-pulls the report too when the quote is already at rc2, so the price stays consistent with the shown violations', async () => {
+    const session = baseSession({
+      funnelStage: 'rc2',
+      report: {
+        reportType: 'mvr',
+        violations: ['speeding_2024'],
+        pulledAt: 'now',
+      },
+    });
+    mockUseQuoteSession.mockReturnValue(session);
+    render(<QuoteClient />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Your Quote' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Update quote' }));
+
+    await waitFor(() => expect(session.submitPage).toHaveBeenCalled());
+    expect(session.pullReport).toHaveBeenCalled();
+  });
+
+  it('"Update quote" does not re-pull the report when the quote is only at rc1', async () => {
+    const session = baseSession({ funnelStage: 'rc1' });
+    mockUseQuoteSession.mockReturnValue(session);
+    render(<QuoteClient />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Personal Details' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Update quote' }));
+
+    await waitFor(() => expect(session.submitPage).toHaveBeenCalled());
+    expect(session.pullReport).not.toHaveBeenCalled();
+  });
+
+  it('"Update quote" keeps the form open and shows the field error on failure', async () => {
+    const session = baseSession({
+      funnelStage: 'rc2',
+      submitPage: jest.fn().mockResolvedValue({
+        success: false,
+        error: {
+          code: 'field_validator_failed',
+          details: { fieldKey: 'ssn', message: 'Invalid SSN prefix' },
+        },
+      }),
+    });
+    mockUseQuoteSession.mockReturnValue(session);
+    render(<QuoteClient />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Your Quote' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Update quote' }));
+
+    await waitFor(() => expect(session.submitPage).toHaveBeenCalled());
+    // Still showing the (editable) form, not bounced back to Driving Record.
+    expect(screen.getByTestId('config-driven-page')).toBeInTheDocument();
+    expect(screen.queryByText('Driving record')).not.toBeInTheDocument();
+  });
+
+  it('"Back to current step" returns to the live step without submitting anything', () => {
+    const session = baseSession({
+      funnelStage: 'rc2',
+      report: { reportType: 'mvr', violations: [], pulledAt: 'now' },
+    });
+    mockUseQuoteSession.mockReturnValue(session);
+    render(<QuoteClient />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Your Quote' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Back to current step' }),
+    );
+
+    expect(screen.getByText('Driving record')).toBeInTheDocument();
+    expect(session.submitPage).not.toHaveBeenCalled();
+  });
+
+  it('does not let the user click back into an earlier step once bind has started', () => {
+    mockUseQuoteSession.mockReturnValue(baseSession({ funnelStage: 'bind' }));
+    render(<QuoteClient />);
+    expect(screen.queryByRole('button', { name: 'Your Quote' })).toBeNull();
   });
 
   it('shows the bind-progress card and polls status once funnelStage is bind', async () => {

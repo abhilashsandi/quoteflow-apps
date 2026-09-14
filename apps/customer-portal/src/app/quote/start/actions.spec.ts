@@ -29,6 +29,7 @@ function gaqFormData(overrides: Record<string, string> = {}): FormData {
     ssn: '123-45-6789',
     phone: '555-0100',
     maritalStatus: 'single',
+    isMarried: 'true',
     vin: '1HGCM82633A004352',
     make: 'Honda',
     model: 'Accord',
@@ -104,6 +105,7 @@ describe('submitGaq', () => {
       { op: 'add', path: '/driver-info/ssn', value: '123-45-6789' },
       { op: 'add', path: '/driver-info/phone', value: '555-0100' },
       { op: 'add', path: '/driver-info/maritalStatus', value: 'single' },
+      { op: 'add', path: '/driver-info/isMarried', value: 'true' },
     ]);
 
     const vantagePatchCall = mockFetch.mock.calls[3];

@@ -14,6 +14,10 @@ export interface SidebarStepsProps {
   groups: SidebarStepGroup[];
   currentStepKey: string;
   completedStepKeys?: string[];
+  /** When set, completed steps (and the current one) render as buttons — clicking one lets
+   * the caller show that step's content again (e.g. to review or edit it) without changing
+   * where the flow actually is. Steps not yet reached stay inert either way. */
+  onStepClick?: (stepKey: string) => void;
   className?: string;
 }
 
@@ -26,6 +30,7 @@ export function SidebarSteps({
   groups,
   currentStepKey,
   completedStepKeys = [],
+  onStepClick,
   className,
 }: SidebarStepsProps) {
   return (
@@ -39,24 +44,36 @@ export function SidebarSteps({
             {group.steps.map((step) => {
               const isCurrent = step.key === currentStepKey;
               const isDone = completedStepKeys.includes(step.key);
+              const clickable = Boolean(onStepClick) && (isCurrent || isDone);
+              const stepClassName = cn(
+                'w-full rounded-r-lg border-l-2 px-4 py-2 text-left text-sm',
+                isCurrent &&
+                  'border-primary bg-accent font-semibold text-foreground',
+                !isCurrent && isDone && 'border-transparent text-foreground',
+                !isCurrent &&
+                  !isDone &&
+                  'border-transparent text-muted-foreground',
+                clickable && 'cursor-pointer hover:bg-accent/60',
+              );
               return (
                 <li key={step.key}>
-                  <div
-                    aria-current={isCurrent ? 'step' : undefined}
-                    className={cn(
-                      'rounded-r-lg border-l-2 px-4 py-2 text-sm',
-                      isCurrent &&
-                        'border-primary bg-accent font-semibold text-foreground',
-                      !isCurrent &&
-                        isDone &&
-                        'border-transparent text-foreground',
-                      !isCurrent &&
-                        !isDone &&
-                        'border-transparent text-muted-foreground',
-                    )}
-                  >
-                    {step.label}
-                  </div>
+                  {clickable ? (
+                    <button
+                      type="button"
+                      aria-current={isCurrent ? 'step' : undefined}
+                      className={stepClassName}
+                      onClick={() => onStepClick?.(step.key)}
+                    >
+                      {step.label}
+                    </button>
+                  ) : (
+                    <div
+                      aria-current={isCurrent ? 'step' : undefined}
+                      className={stepClassName}
+                    >
+                      {step.label}
+                    </div>
+                  )}
                 </li>
               );
             })}
